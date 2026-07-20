@@ -1,4 +1,5 @@
-# DuckDNS IP updater. Token file moves to agenix in Phase 2.
+# DuckDNS IP updater. The token comes from an agenix EnvironmentFile
+# (DUCKDNS_TOKEN=...) declared by the host as age.secrets.duckdns-token.
 { config, lib, pkgs, ... }:
 let
   cfg = config.homelab.services.duckdns;
@@ -12,10 +13,12 @@ in
     systemd.services.duckdns = {
       description = "Update DuckDNS IP";
       script = ''
-        TOKEN=$(cat /etc/duckdns/token)
-        ${pkgs.curl}/bin/curl -fsS "https://www.duckdns.org/update?domains=${subdomain}&token=$TOKEN&ip="
+        ${pkgs.curl}/bin/curl -fsS "https://www.duckdns.org/update?domains=${subdomain}&token=$DUCKDNS_TOKEN&ip="
       '';
-      serviceConfig.Type = "oneshot";
+      serviceConfig = {
+        Type = "oneshot";
+        EnvironmentFile = config.age.secrets.duckdns-token.path;
+      };
     };
 
     systemd.timers.duckdns = {

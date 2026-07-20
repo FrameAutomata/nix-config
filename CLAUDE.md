@@ -20,6 +20,6 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
-Phase 1 complete: module layout live (hosts/wheezertbts + modules/common +
-modules/homelab), desktop stack removed, host renamed to wheezertbts.
-Next: Phase 2 (agenix; migrate the DuckDNS token off /etc/duckdns/token).
+Phase 2 complete: agenix live; duckdns-token.age decrypts via the host ssh
+key, DuckDNS unit reads it as an EnvironmentFile.
+Next: Phase 3 (wildcard cert via DNS-01 + internal nginx vhost layer).

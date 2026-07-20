@@ -11,6 +11,8 @@
 
   networking.hostName = "wheezertbts";
 
+  age.secrets.duckdns-token.file = ./secrets/duckdns-token.age;
+
   homelab = {
     baseDomain = "wheezertbts.duckdns.org";
     lanCIDR = "192.168.1.0/24";
