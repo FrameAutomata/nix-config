@@ -120,7 +120,8 @@
   config.services.headscale.package
   claude-code
   git
-  tmux  
+  gh
+  tmux
   ];
 
   # Adding Nvidia driver support and allowing for X11 video rendering
