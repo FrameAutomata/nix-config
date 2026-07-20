@@ -21,11 +21,7 @@ in
       '';
       serviceConfig = {
         Type = "oneshot";
-        EnvironmentFile =
-          (config.age.secrets.duckdns-token or (throw ''
-            homelab.services.duckdns: the host must declare
-            age.secrets.duckdns-token (an EnvironmentFile with DUCKDNS_TOKEN=...)
-          '')).path;
+        EnvironmentFile = config.homelab.duckdnsTokenFile;
       };
     };
 

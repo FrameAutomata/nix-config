@@ -20,6 +20,11 @@ in
       };
     };
 
+    # keep the proxy layer's catch-all guarding the public apex vhost even if
+    # all internal vhosts are ever disabled (mkDefault: a host may still
+    # override, e.g. to front headscale with an external proxy)
+    homelab.nginx.enable = lib.mkDefault true;
+
     services.tailscale = {
       enable = true;
       openFirewall = true; # opens the tailscale UDP port

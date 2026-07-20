@@ -3,7 +3,10 @@ let
   cfg = config.homelab;
 in
 {
-  imports = [ ./services ];
+  imports = [
+    ./nginx.nix
+    ./services
+  ];
 
   options.homelab = {
     baseDomain = lib.mkOption {
@@ -12,12 +15,28 @@ in
     };
     lanCIDR = lib.mkOption {
       type = lib.types.str;
-      description = "LAN subnet, for internal-vhost allowlists (wired up in Phase 3; not yet consumed)";
+      description = "LAN subnet, allowed by internal-vhost access control";
     };
     tailnetCIDR = lib.mkOption {
       type = lib.types.str;
       default = "100.64.0.0/10";
-      description = "Tailnet subnet, for internal-vhost allowlists (wired up in Phase 3; not yet consumed)";
+      description = "Tailnet IPv4 subnet, allowed by internal-vhost access control";
+    };
+    tailnetCIDRv6 = lib.mkOption {
+      type = lib.types.str;
+      default = "fd7a:115c:a1e0::/48";
+      description = "Tailnet IPv6 ULA prefix (headscale assigns dual-stack by default), allowed by internal-vhost access control";
+    };
+    duckdnsTokenFile = lib.mkOption {
+      type = lib.types.path;
+      default =
+        (config.age.secrets.duckdns-token or (throw ''
+          homelab: the host must declare age.secrets.duckdns-token
+          (an EnvironmentFile with DUCKDNS_TOKEN=...), used by the DuckDNS
+          updater and by ACME DNS-01 for the wildcard cert
+        '')).path;
+      defaultText = "config.age.secrets.duckdns-token.path";
+      description = "EnvironmentFile containing DUCKDNS_TOKEN=...";
     };
     mounts.media = lib.mkOption {
       # a string, not types.path: the value is used as a mount point / share

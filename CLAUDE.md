@@ -24,6 +24,9 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
-Phase 2 complete: agenix live; duckdns-token.age decrypts via the host ssh
-key, DuckDNS unit reads it as an EnvironmentFile.
-Next: Phase 3 (wildcard cert via DNS-01 + internal nginx vhost layer).
+Phase 3 complete: wildcard cert (DNS-01 via the duckdns token secret) +
+internal vhost layer (homelab.nginx.internal) with LAN/tailnet allowlists;
+jellyfin. and abs. vhosts live; certless rejectSSL catch-all guards the apex.
+Note: subdomain vhosts are only reachable via --resolve pinning until
+Phase 4 (AdGuard split DNS) makes them resolve to the LAN IP.
+Next: Phase 4 (AdGuard Home + split DNS).
