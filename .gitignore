@@ -1,0 +1,11 @@
+# Build outputs
+result
+result-*
+
+# Plaintext secret staging — encrypted .age files are the only secrets allowed in-repo
+*.token
+*.secret
+*.env
+*.ovpn
+*.conf.plaintext
+secrets-staging/
