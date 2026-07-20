@@ -20,6 +20,6 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
-Phase 0 complete: flake wraps /etc/nixos config verbatim; flake attr is
-`wheezer-the-band-the-server` (current hostName) with alias `nixos`.
-Phase 1 renames the host to `wheezertbts` and introduces the module layout.
+Phase 1 complete: module layout live (hosts/wheezertbts + modules/common +
+modules/homelab), desktop stack removed, host renamed to wheezertbts.
+Next: Phase 2 (agenix; migrate the DuckDNS token off /etc/duckdns/token).
