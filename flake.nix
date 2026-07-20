@@ -17,7 +17,10 @@
       modules = [
         ./hosts/wheezertbts
         agenix.nixosModules.default
-        ({ pkgs, ... }: { environment.systemPackages = [ agenix.packages.${pkgs.system}.default ]; })
+        (
+          { pkgs, ... }:
+          { environment.systemPackages = [ agenix.packages.${pkgs.stdenv.hostPlatform.system}.default ]; }
+        )
       ];
     };
   };
