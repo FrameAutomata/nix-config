@@ -16,7 +16,9 @@ in
       settings = {
         server_url = "https://${homelab.baseDomain}";
         dns.base_domain = "internal";
-        dns.nameservers.global = [ "1.1.1.1" "8.8.8.8" ];
+        # mkDefault: overridden by adguard.nix (tailnet clients resolve
+        # through AdGuard) when that service is enabled
+        dns.nameservers.global = lib.mkDefault homelab.upstreamDNS;
       };
     };
 
@@ -28,7 +30,13 @@ in
     services.tailscale = {
       enable = true;
       openFirewall = true; # opens the tailscale UDP port
-      useRoutingFeatures = "client"; # sets checkReversePath = "loose"
+      # "both" = client behaviors (rp_filter loose, preserved from the
+      # original config) + server behaviors (IP forwarding, needed to route
+      # the advertised LAN subnet). "server" alone would NOT loosen rp_filter.
+      useRoutingFeatures = "both";
+      # advertise the LAN so remote tailnet clients can reach the LAN IPs
+      # that split DNS returns; route must be approved in headscale (§8)
+      extraSetFlags = [ "--advertise-routes=${homelab.lanCIDR}" ];
     };
 
     services.nginx = {

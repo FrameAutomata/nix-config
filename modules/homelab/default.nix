@@ -17,6 +17,31 @@ in
       type = lib.types.str;
       description = "LAN subnet, allowed by internal-vhost access control";
     };
+    lanIP = lib.mkOption {
+      type = lib.types.str;
+      description = "This host's LAN IP (split-DNS rewrite target)";
+    };
+    lanInterface = lib.mkOption {
+      type = lib.types.str;
+      description = "LAN network interface name (for interface-scoped firewall rules)";
+    };
+    tailnetIP = lib.mkOption {
+      type = lib.types.str;
+      description = ''
+        This host's tailnet IP (assigned by headscale at registration —
+        verify with `ip addr show tailscale0` and re-check after any
+        re-registration; tailnet clients use it as their DNS server, so a
+        stale value silently breaks all tailnet DNS)
+      '';
+    };
+    upstreamDNS = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "9.9.9.9" # Quad9
+        "1.1.1.1" # Cloudflare
+      ];
+      description = "Public DNS upstreams, used by AdGuard and as the host's own bootstrap resolvers";
+    };
     tailnetCIDR = lib.mkOption {
       type = lib.types.str;
       default = "100.64.0.0/10";

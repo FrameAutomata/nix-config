@@ -24,9 +24,11 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
-Phase 3 complete: wildcard cert (DNS-01 via the duckdns token secret) +
-internal vhost layer (homelab.nginx.internal) with LAN/tailnet allowlists;
-jellyfin. and abs. vhosts live; certless rejectSSL catch-all guards the apex.
-Note: subdomain vhosts are only reachable via --resolve pinning until
-Phase 4 (AdGuard split DNS) makes them resolve to the LAN IP.
-Next: Phase 4 (AdGuard Home + split DNS).
+Phase 4 complete: AdGuard Home on :53 (LAN + tailnet), split-DNS rewrites
+*.baseDomain -> lanIP, tailnet clients resolve via headscale global
+nameserver = this box's tailnet IP (homelab.tailnetIP), LAN subnet
+advertised to the tailnet. The HOST itself stays on public upstreams
+(bootstrap-deadlock avoidance) + an extraHosts apex pin (its own tailscale
+client must not depend on hairpin NAT). AdGuard web UI (adguard.<domain>)
+has NO auth until Thomas sets a password in the UI.
+Next: Phase 5 (download stack in a WireGuard netns).

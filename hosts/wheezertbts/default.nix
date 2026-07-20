@@ -16,9 +16,13 @@
   homelab = {
     baseDomain = "wheezertbts.duckdns.org";
     lanCIDR = "192.168.1.0/24";
+    lanIP = "192.168.1.239";
+    lanInterface = "enp3s0";
+    tailnetIP = "100.64.0.1";
     timeZone = "America/Chicago";
     user = "wheezertbts";
     services = {
+      adguard.enable = true;
       jellyfin.enable = true;
       audiobookshelf.enable = true;
       samba.enable = true;
@@ -26,6 +30,25 @@
       duckdns.enable = true;
     };
   };
+
+  # Keep this host's own resolution on public upstreams: once the router
+  # hands out this box as the LAN DNS server, DHCP would otherwise point the
+  # host at its own AdGuard — a bootstrap deadlock if AdGuard is down.
+  networking.networkmanager.dns = "none";
+  networking.nameservers = config.homelab.upstreamDNS;
+  # ...and stop this box's own tailscale client from accepting headscale's
+  # DNS push (which would put MagicDNS -> AdGuard-on-self in resolv.conf,
+  # re-creating the self-dependency the pin above avoids)
+  services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
+
+  # Keep the apex pinned for THIS box even though AdGuard now serves split
+  # DNS to clients: the host itself resolves via public upstreams (above), so
+  # without the pin its own tailscale client would dial server_url at the WAN
+  # IP and depend on router hairpin NAT — if that fails, this node (the
+  # tailnet's subnet router AND DNS server) drops off the tailnet.
+  networking.extraHosts = ''
+    ${config.homelab.lanIP} ${config.homelab.baseDomain}
+  '';
 
   users.users.${config.homelab.user} = {
     isNormalUser = true;
@@ -52,12 +75,6 @@
     acceptTerms = true;
     defaults.email = "ththirlwall99@gmail.com";
   };
-
-  # Split-DNS stopgap so LAN clients resolve the domain locally.
-  # Removed in Phase 4 when AdGuard Home takes over DNS.
-  networking.extraHosts = ''
-    192.168.1.239 ${config.homelab.baseDomain}
-  '';
 
   # Legacy Surfshark OpenVPN — retired in Phase 5 (replaced by WireGuard netns).
   services.openvpn.servers.surfshark = {
