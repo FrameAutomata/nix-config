@@ -12,12 +12,20 @@ in
   config = lib.mkIf cfg.enable {
     systemd.services.duckdns = {
       description = "Update DuckDNS IP";
+      # DuckDNS answers HTTP 200 with body "KO" on a bad/empty token, so
+      # curl -f alone cannot detect failure — check the body explicitly.
       script = ''
-        ${pkgs.curl}/bin/curl -fsS "https://www.duckdns.org/update?domains=${subdomain}&token=$DUCKDNS_TOKEN&ip="
+        resp=$(${pkgs.curl}/bin/curl -fsS "https://www.duckdns.org/update?domains=${subdomain}&token=$DUCKDNS_TOKEN&ip=")
+        echo "$resp"
+        [ "$resp" = "OK" ]
       '';
       serviceConfig = {
         Type = "oneshot";
-        EnvironmentFile = config.age.secrets.duckdns-token.path;
+        EnvironmentFile =
+          (config.age.secrets.duckdns-token or (throw ''
+            homelab.services.duckdns: the host must declare
+            age.secrets.duckdns-token (an EnvironmentFile with DUCKDNS_TOKEN=...)
+          '')).path;
       };
     };
 

@@ -12,7 +12,11 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Rebuild: sudo nixos-rebuild switch --flake .#wheezertbts
 - Safe try: sudo nixos-rebuild test --flake .#wheezertbts
 - Rollback: sudo nixos-rebuild switch --rollback
-- Secret edit: agenix -e hosts/wheezertbts/secrets/<name>.age
+- Secret edit (run from the secrets dir — the CLI resolves rules relative to cwd):
+  cd hosts/wheezertbts/secrets
+  on the server: sudo agenix -e -i /etc/ssh/ssh_host_ed25519_key <name>.age
+  on the desktop (corbi key): agenix -e <name>.age
+  Keep the DUCKDNS_TOKEN=... env format when editing duckdns-token.age.
 
 ## Map
 - hosts/wheezertbts/ — machine config + secrets
