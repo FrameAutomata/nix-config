@@ -32,9 +32,7 @@
     description = "Wheezer the Band the Server";
     # video/render = GPU access for this host's NVIDIA card (modules/common/nvidia.nix)
     extraGroups = [ "networkmanager" "wheel" "video" "render" ];
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICPp3lCoxw+RdLFkALHGG+zmHw1NkMMaV8bQ7Km2yIX7 corbi@DESKTOP-CJ3RO7R"
-    ];
+    openssh.authorizedKeys.keys = [ (import ./keys.nix).admin ];
   };
 
   # This-host tooling, not base infrastructure (modules/common stays lean)
