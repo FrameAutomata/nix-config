@@ -47,11 +47,10 @@ in
         NetworkNamespacePath = "/var/run/netns/${ns}";
         # the netns must resolve via the VPN's DNS, not the host's resolv.conf
         BindReadOnlyPaths = [ "/etc/netns/${ns}/resolv.conf:/etc/resolv.conf" ];
+        # downloads land group-writable for the arrs (shared `media` group)
+        UMask = "0002";
       };
     };
-
-    # umask so imports land group-writable for the arrs (shared `media` group)
-    systemd.services.qbittorrent.serviceConfig.UMask = "0002";
 
     systemd.sockets.qbittorrent-proxy = {
       enable = true;
