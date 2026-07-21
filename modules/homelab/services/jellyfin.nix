@@ -15,6 +15,12 @@ in
     homelab.nginx.internal.jellyfin = {
       proxyPass = "http://127.0.0.1:8096";
       websockets = true;
+      dashboard = {
+        name = "Jellyfin";
+        description = "Movies & TV";
+        icon = "jellyfin.svg";
+        category = "Media";
+      };
     };
     users.groups.${config.homelab.group}.members = [ "jellyfin" ];
   };

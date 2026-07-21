@@ -12,5 +12,10 @@
     ./sonarr.nix
     ./radarr.nix
     ./jellyseerr.nix
+    ./vaultwarden.nix
+    ./navidrome.nix
+    ./filebrowser.nix
+    ./homepage.nix
+    ./uptime-kuma.nix
   ];
 }

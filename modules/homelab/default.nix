@@ -5,6 +5,7 @@ in
 {
   imports = [
     ./nginx.nix
+    ./household.nix
     ./services
   ];
 

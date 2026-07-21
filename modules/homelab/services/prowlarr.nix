@@ -12,6 +12,12 @@ in
     services.prowlarr.enable = true;
     homelab.nginx.internal.prowlarr = {
       proxyPass = "http://127.0.0.1:${toString config.services.prowlarr.settings.server.port}";
+      dashboard = {
+        name = "Prowlarr";
+        description = "Indexer manager";
+        icon = "prowlarr.svg";
+        category = "Downloads";
+      };
     };
   };
 }

@@ -12,6 +12,12 @@ in
     };
     homelab.nginx.internal.radarr = {
       proxyPass = "http://127.0.0.1:${toString config.services.radarr.settings.server.port}";
+      dashboard = {
+        name = "Radarr";
+        description = "Movie automation";
+        icon = "radarr.svg";
+        category = "Downloads";
+      };
     };
   };
 }

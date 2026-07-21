@@ -25,15 +25,22 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
-Phase 5 complete: arr stack (prowlarr/sonarr/radarr/jellyseerr — upstream
-module is services.seerr) behind internal vhosts; qBittorrent confined to
-the wg_client netns (Surfshark WireGuard us-dal, surfshark-wg.age in
-`wg setconf` format — Endpoint by IP, no Address/DNS lines; those are
-module options privateIP/dnsIPs). Kill switch verified: netns egress =
-Surfshark IP, wg0 only default route, netns dark when wg_client.service
-stops. WebUI via socket proxy on host 127.0.0.1:8081 -> qbt.<domain>.
-qBittorrent's qBittorrent.conf is deliberately NOT nix-managed
-(serverConfig would clobber UI-set admin password on every start).
-OpenVPN surfshark retired. AdGuard web UI + qBittorrent WebUI still
-need passwords set in their UIs; arr interconnect wizards pending.
-Next: Phase 6 (household apps).
+Phase 6 complete: Vaultwarden (vault., signups OPEN until roommates
+register — then flip homelab.services.vaultwarden.allowSignups off),
+Navidrome (music., library /mnt/media/Music — there is no Media/ parent
+dir), FileBrowser (files., root /mnt/media, per-account jails are UI
+state: ALWAYS scope an account before handing out credentials), Homepage
+(home., tiles ride the `dashboard` field on homelab.nginx.internal
+entries), Uptime Kuma (status., monitors pending in its UI — internal
+vhost names resolve locally via the nginx.nix extraHosts pins). Household
+model live: homelab.household.enable, members = roommate handles only
+(admin auto-included, handles validated against reserved names);
+Private/<name> 2770 + per-person share, Shared 2775 @household, [media]
+vetoes /Private/Shared/. Samba shares go through the
+homelab.services.samba.shares registry. FileBrowser runs UMask 0002 +
+StateDirectoryMode 0700 (Bolt DB holds the JWT signing secret); its
+upstream tmpfiles rule set is mkForce-replaced so /mnt/media stays
+unmanaged. Pending manual (§8): smbpasswd -a per member, roommate web-UI
+accounts, FileBrowser jails, Kuma monitors, AdGuard/qBittorrent UI
+passwords, arr interconnect wizards. Next: Phase 7 (btrbk, restic→B2,
+Scrutiny, ntfy).

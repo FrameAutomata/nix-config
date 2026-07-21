@@ -12,6 +12,12 @@ in
     };
     homelab.nginx.internal.sonarr = {
       proxyPass = "http://127.0.0.1:${toString config.services.sonarr.settings.server.port}";
+      dashboard = {
+        name = "Sonarr";
+        description = "TV automation";
+        icon = "sonarr.svg";
+        category = "Downloads";
+      };
     };
   };
 }

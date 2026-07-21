@@ -12,6 +12,12 @@ in
     services.seerr.enable = true;
     homelab.nginx.internal.requests = {
       proxyPass = "http://127.0.0.1:${toString config.services.seerr.port}";
+      dashboard = {
+        name = "Jellyseerr";
+        description = "Request movies & shows";
+        icon = "jellyseerr.svg";
+        category = "Media";
+      };
     };
   };
 }

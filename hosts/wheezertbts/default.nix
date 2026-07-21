@@ -13,6 +13,7 @@
 
   age.secrets.duckdns-token.file = ./secrets/duckdns-token.age;
   age.secrets.surfshark-wg.file = ./secrets/surfshark-wg.age;
+  age.secrets.vaultwarden-admin.file = ./secrets/vaultwarden-admin.age;
 
   homelab = {
     baseDomain = "wheezertbts.duckdns.org";
@@ -42,7 +43,20 @@
         dnsIPs = [ "162.252.172.57" "149.154.159.92" ];
       };
       qbittorrent.enable = true;
+      vaultwarden = {
+        enable = true;
+        # open registration during household onboarding — flip off once the
+        # roommates have accounts (plan §8)
+        allowSignups = true;
+      };
+      navidrome.enable = true;
+      filebrowser.enable = true;
+      homepage.enable = true;
+      uptime-kuma.enable = true;
     };
+    # The admin is a member automatically; roommate handles get appended to
+    # household.members once agreed (plan §8).
+    household.enable = true;
   };
 
   # Keep this host's own resolution on public upstreams: once the router

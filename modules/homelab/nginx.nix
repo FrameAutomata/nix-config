@@ -7,9 +7,18 @@ let
   homelab = config.homelab;
   cfg = config.homelab.nginx;
   certName = "wildcard-${homelab.baseDomain}";
+  # single source for tile categories: the enum below turns a typo'd
+  # category into an eval error, and homepage.nix renders in this order
+  dashboardCategories = [ "Media" "Downloads" "Household" "Infrastructure" ];
 in
 {
   options.homelab.nginx = {
+    dashboardCategories = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = dashboardCategories;
+      readOnly = true;
+      description = "Canonical dashboard categories, in display order";
+    };
     enable = lib.mkOption {
       type = lib.types.bool;
       default = cfg.internal != { };
@@ -33,6 +42,36 @@ in
               type = lib.types.bool;
               default = false;
               description = "Enable websocket proxying";
+            };
+            dashboard = lib.mkOption {
+              type = lib.types.nullOr (
+                lib.types.submodule {
+                  options = {
+                    name = lib.mkOption {
+                      type = lib.types.str;
+                      description = "Tile display name";
+                    };
+                    description = lib.mkOption {
+                      type = lib.types.str;
+                      description = "One-line tile subtitle";
+                    };
+                    icon = lib.mkOption {
+                      type = lib.types.str;
+                      description = "dashboard-icons filename, e.g. jellyfin.svg";
+                    };
+                    category = lib.mkOption {
+                      type = lib.types.enum dashboardCategories;
+                      description = "Dashboard group the tile appears under";
+                    };
+                  };
+                }
+              );
+              default = null;
+              description = ''
+                Homepage dashboard tile for this vhost (rendered by
+                services/homepage.nix); the link target is derived from the
+                vhost name, so it can never drift from the real URL
+              '';
             };
           };
         }
@@ -58,6 +97,14 @@ in
     # The proxy layer owns its own ports (headscale.nix keeping a copy is a
     # harmless list merge).
     networking.firewall.allowedTCPPorts = [ 80 443 ];
+
+    # The host itself resolves via public upstreams (AdGuard split DNS
+    # serves only LAN/tailnet clients), so pin every internal vhost locally
+    # — otherwise on-box consumers (uptime-kuma monitors, curl) chase the
+    # public WAN record and depend on flaky router hairpin NAT.
+    networking.extraHosts = lib.concatMapStrings (
+      name: "${homelab.lanIP} ${name}.${homelab.baseDomain}\n"
+    ) (lib.attrNames cfg.internal);
 
     services.nginx = {
       enable = true;

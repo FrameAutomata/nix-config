@@ -48,8 +48,15 @@ in
       };
     };
 
-    homelab.nginx.internal.adguard.proxyPass =
-      "http://127.0.0.1:${toString config.services.adguardhome.port}";
+    homelab.nginx.internal.adguard = {
+      proxyPass = "http://127.0.0.1:${toString config.services.adguardhome.port}";
+      dashboard = {
+        name = "AdGuard Home";
+        description = "DNS & ad blocking";
+        icon = "adguard-home.svg";
+        category = "Infrastructure";
+      };
+    };
 
     # When this box also runs headscale, point tailnet clients at AdGuard so
     # they get split DNS + blocking (overrides headscale.nix's mkDefault).
