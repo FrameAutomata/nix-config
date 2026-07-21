@@ -41,6 +41,23 @@
   # re-creating the self-dependency the pin above avoids)
   services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
 
+  # Second LAN IP: the router's DHCP settings force two *different* DNS
+  # entries, so both point at AdGuard via .239 and .240. NM profile keeps
+  # DHCP for the primary address and adds .240 statically.
+  networking.networkmanager.ensureProfiles.profiles.lan = {
+    connection = {
+      id = "lan";
+      type = "ethernet";
+      interface-name = config.homelab.lanInterface;
+      autoconnect = true;
+      autoconnect-priority = 100; # beat the auto-generated "Wired connection 1"
+    };
+    ipv4 = {
+      method = "auto"; # DHCP still provides .239 + routes
+      address1 = "192.168.1.240/24";
+    };
+  };
+
   # Keep the apex pinned for THIS box even though AdGuard now serves split
   # DNS to clients: the host itself resolves via public upstreams (above), so
   # without the pin its own tailscale client would dial server_url at the WAN
