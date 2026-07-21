@@ -41,9 +41,10 @@
   # re-creating the self-dependency the pin above avoids)
   services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
 
-  # Second LAN IP: the router's DHCP settings force two *different* DNS
-  # entries, so both point at AdGuard via .239 and .240. NM profile keeps
-  # DHCP for the primary address and adds .240 statically.
+  # Fully static LAN addressing: this box IS the DHCP server (AdGuard,
+  # below) since the Spectrum gateway can't hand out custom DHCP DNS, so it
+  # cannot depend on any DHCP itself. .240 kept as a second address (both
+  # router DNS slots pointed at AdGuard during the earlier attempt; harmless).
   networking.networkmanager.ensureProfiles.profiles.lan = {
     connection = {
       id = "lan";
@@ -53,8 +54,29 @@
       autoconnect-priority = 100; # beat the auto-generated "Wired connection 1"
     };
     ipv4 = {
-      method = "auto"; # DHCP still provides .239 + routes
-      address1 = "192.168.1.240/24";
+      method = "manual";
+      address1 = "${config.homelab.lanIP}/24";
+      address2 = "192.168.1.240/24";
+      gateway = "192.168.1.1";
+    };
+  };
+
+  # AdGuard DHCP: written and tested, but DISABLED — the Spectrum gateway's
+  # DHCP cannot be turned off (no LAN/DHCP controls; its "DNS Server" fields
+  # reject LAN-side addresses outright), and two racing DHCP servers are
+  # worse than none. Interim: per-device DNS -> 192.168.1.239.
+  # Flip to true when the gateway goes bridge mode behind our own router.
+  services.adguardhome.settings.dhcp = {
+    enabled = false;
+    interface_name = config.homelab.lanInterface;
+    dhcpv4 = {
+      gateway_ip = "192.168.1.1";
+      subnet_mask = "255.255.255.0";
+      range_start = "192.168.1.100";
+      range_end = "192.168.1.200";
+      lease_duration = 86400;
+      # option 6 (DNS): both AdGuard addresses, explicitly
+      options = [ "6 ips ${config.homelab.lanIP},192.168.1.240" ];
     };
   };
 
