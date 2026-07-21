@@ -28,6 +28,19 @@
       samba.enable = true;
       headscale.enable = true;
       duckdns.enable = true;
+      prowlarr.enable = true;
+      sonarr.enable = true;
+      radarr.enable = true;
+      jellyseerr.enable = true;
+      # wireguard-netns + qbittorrent stay off until the Surfshark WireGuard
+      # config lands in secrets/surfshark-wg.age (manual step, plan §8):
+      # wireguard-netns = {
+      #   enable = true;
+      #   configFile = config.age.secrets.surfshark-wg.path;
+      #   privateIP = "<Address from Surfshark manual config>";
+      #   dnsIPs = [ "<Surfshark WG DNS>" ];
+      # };
+      # qbittorrent.enable = true;
     };
   };
 
@@ -113,13 +126,6 @@
   security.acme = {
     acceptTerms = true;
     defaults.email = "ththirlwall99@gmail.com";
-  };
-
-  # Legacy Surfshark OpenVPN — retired in Phase 5 (replaced by WireGuard netns).
-  services.openvpn.servers.surfshark = {
-    config = "config /etc/openvpn/surfshark.ovpn";
-    autoStart = false;
-    updateResolvConf = true;
   };
 
   system.stateVersion = "26.05"; # never change this
