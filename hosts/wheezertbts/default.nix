@@ -12,6 +12,7 @@
   networking.hostName = "wheezertbts";
 
   age.secrets.duckdns-token.file = ./secrets/duckdns-token.age;
+  age.secrets.surfshark-wg.file = ./secrets/surfshark-wg.age;
 
   homelab = {
     baseDomain = "wheezertbts.duckdns.org";
@@ -32,15 +33,15 @@
       sonarr.enable = true;
       radarr.enable = true;
       jellyseerr.enable = true;
-      # wireguard-netns + qbittorrent stay off until the Surfshark WireGuard
-      # config lands in secrets/surfshark-wg.age (manual step, plan §8):
-      # wireguard-netns = {
-      #   enable = true;
-      #   configFile = config.age.secrets.surfshark-wg.path;
-      #   privateIP = "<Address from Surfshark manual config>";
-      #   dnsIPs = [ "<Surfshark WG DNS>" ];
-      # };
-      # qbittorrent.enable = true;
+      # Surfshark manual WireGuard (us-dal); the .age holds the keys, these
+      # are the non-secret halves of the same config
+      wireguard-netns = {
+        enable = true;
+        configFile = config.age.secrets.surfshark-wg.path;
+        privateIP = "10.14.0.2/16";
+        dnsIPs = [ "162.252.172.57" "149.154.159.92" ];
+      };
+      qbittorrent.enable = true;
     };
   };
 

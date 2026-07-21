@@ -8,4 +8,6 @@ let
 in
 {
   "duckdns-token.age".publicKeys = all;
+  # Surfshark WireGuard config in `wg setconf` format (see wireguard-netns.nix)
+  "surfshark-wg.age".publicKeys = all;
 }
