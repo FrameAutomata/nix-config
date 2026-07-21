@@ -7,6 +7,7 @@ in
   imports = [
     ./nginx.nix
     ./household.nix
+    ./onboard.nix
     ./services
   ];
 

@@ -54,6 +54,16 @@ acme-order-renew-<cert>, the timers trigger the latter). Verified:
 failure push arrives on topic "homelab". Onboarding of ALL users
 deliberately deferred to the end (Thomas's call).
 
+Onboarding tooling: welcome. static vhost (services/welcome.nix — member
+self-guide; sections render only for enabled services;
+homelab.nginx.internal now takes `root` as an alternative to proxyPass)
++ `sudo homelab-onboard <handle>` (onboard.nix): smbpasswd enroll,
+FileBrowser account created WITH its /Private/<handle> jail (scope-
+before-credentials by construction), headscale user + 24h pre-auth key,
+prints a credential sheet. Re-runnable: existing accounts are left
+unchanged. Media-app accounts (Jellyfin/Navidrome/ABS) stay manual until
+their first-run wizards produce admin API tokens.
+
 Phase 6 complete: Vaultwarden (vault., signups OPEN until roommates
 register — then flip homelab.services.vaultwarden.allowSignups off),
 Navidrome (music., library /mnt/media/Music — there is no Media/ parent

@@ -35,8 +35,14 @@ in
         lib.types.submodule {
           options = {
             proxyPass = lib.mkOption {
-              type = lib.types.str;
-              description = "Upstream URL to proxy to";
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Upstream URL to proxy to (exactly one of proxyPass or root)";
+            };
+            root = lib.mkOption {
+              type = lib.types.nullOr lib.types.path;
+              default = null;
+              description = "Static content root served directly instead of proxying (exactly one of proxyPass or root)";
             };
             websockets = lib.mkOption {
               type = lib.types.bool;
@@ -82,6 +88,11 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = lib.mapAttrsToList (name: vh: {
+      assertion = (vh.proxyPass != null) != (vh.root != null);
+      message = "homelab.nginx.internal.${name}: set exactly one of proxyPass or root";
+    }) cfg.internal;
+
     # Wildcard only — no apex SAN: DuckDNS allows one TXT record at a time,
     # and the apex is already covered by the Headscale vhost's HTTP-01 cert.
     # Only needed while internal vhosts exist; the catch-all is certless.
@@ -114,7 +125,9 @@ in
           lib.nameValuePair "${name}.${homelab.baseDomain}" {
             forceSSL = true;
             useACMEHost = certName;
-            locations."/" = {
+            root = vh.root;
+            # static vhosts (root) need no location config at all
+            locations."/" = lib.optionalAttrs (vh.proxyPass != null) {
               proxyPass = vh.proxyPass;
               proxyWebsockets = vh.websockets;
               # Host/X-Real-IP/X-Forwarded-* headers — without these, upstreams

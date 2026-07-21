@@ -20,5 +20,6 @@
     ./backup.nix
     ./scrutiny.nix
     ./ntfy.nix
+    ./welcome.nix
   ];
 }

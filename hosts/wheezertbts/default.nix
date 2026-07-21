@@ -58,6 +58,7 @@
       backup.enable = true;
       scrutiny.enable = true;
       ntfy.enable = true;
+      welcome.enable = true;
     };
     # The admin is a member automatically; roommate handles get appended to
     # household.members once agreed (plan §8).
