@@ -33,5 +33,7 @@ in
         OnUnitActiveSec = "5min";
       };
     };
+
+    homelab.services.ntfy.notifyOnFailure = [ "duckdns" ];
   };
 }

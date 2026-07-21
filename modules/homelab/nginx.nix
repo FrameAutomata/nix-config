@@ -98,6 +98,13 @@ in
     # harmless list merge).
     networking.firewall.allowedTCPPorts = [ 80 443 ];
 
+    # lego renewal failures surface ~30 days before the cert actually
+    # expires; scheduled renewals run through the separate order-renew unit
+    homelab.services.ntfy.notifyOnFailure = lib.optionals (cfg.internal != { }) [
+      "acme-${certName}"
+      "acme-order-renew-${certName}"
+    ];
+
     # The host itself resolves via public upstreams (AdGuard split DNS
     # serves only LAN/tailnet clients), so pin every internal vhost locally
     # — otherwise on-box consumers (uptime-kuma monitors, curl) chase the

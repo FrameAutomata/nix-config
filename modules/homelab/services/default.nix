@@ -17,5 +17,8 @@
     ./filebrowser.nix
     ./homepage.nix
     ./uptime-kuma.nix
+    ./backup.nix
+    ./scrutiny.nix
+    ./ntfy.nix
   ];
 }

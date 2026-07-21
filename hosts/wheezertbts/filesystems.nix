@@ -12,4 +12,7 @@
     interval = "monthly";
     fileSystems = [ config.homelab.mounts.media ];
   };
+
+  # unit name = "btrfs-scrub-" + systemd path escape of the mount point
+  homelab.services.ntfy.notifyOnFailure = [ "btrfs-scrub-mnt-media" ];
 }

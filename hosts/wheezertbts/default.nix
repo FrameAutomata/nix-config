@@ -14,6 +14,7 @@
   age.secrets.duckdns-token.file = ./secrets/duckdns-token.age;
   age.secrets.surfshark-wg.file = ./secrets/surfshark-wg.age;
   age.secrets.vaultwarden-admin.file = ./secrets/vaultwarden-admin.age;
+  age.secrets.restic-password.file = ./secrets/restic-password.age;
 
   homelab = {
     baseDomain = "wheezertbts.duckdns.org";
@@ -53,6 +54,10 @@
       filebrowser.enable = true;
       homepage.enable = true;
       uptime-kuma.enable = true;
+      # b2 sub-config joins once the bucket + application key exist (plan §8)
+      backup.enable = true;
+      scrutiny.enable = true;
+      ntfy.enable = true;
     };
     # The admin is a member automatically; roommate handles get appended to
     # household.members once agreed (plan §8).

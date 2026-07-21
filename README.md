@@ -2,10 +2,12 @@
 
 NixOS flake for the `wheezertbts` household homelab server.
 
-**Status:** Phase 6 — household apps (Vaultwarden, Navidrome, FileBrowser,
-Homepage, Uptime Kuma) and the household privacy model are live, on top of
-the earlier phases (flake + module skeleton, agenix, wildcard TLS + internal
-vhosts, AdGuard split DNS, VPN-confined download stack).
+**Status:** Phase 7 — safety net live: hourly btrbk snapshots of the media
+pool, nightly restic backups of service state to a local repo on the
+mirror (B2 offsite ready, pending credentials), Scrutiny SMART monitoring,
+and ntfy failure alerts. On top of the earlier phases: household apps +
+privacy model, VPN-confined download stack, AdGuard split DNS, wildcard
+TLS + internal vhosts, agenix, flake + module skeleton.
 
 ## Rebuild
 

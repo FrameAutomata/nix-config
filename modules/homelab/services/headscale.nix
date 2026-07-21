@@ -55,5 +55,12 @@ in
       allowedTCPPorts = [ 80 443 ];
       trustedInterfaces = [ "tailscale0" ];
     };
+
+    # a dead apex cert renewal takes roommates' remote access with it;
+    # scheduled renewals run through the separate order-renew unit
+    homelab.services.ntfy.notifyOnFailure = [
+      "acme-${homelab.baseDomain}"
+      "acme-order-renew-${homelab.baseDomain}"
+    ];
   };
 }

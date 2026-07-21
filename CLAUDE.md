@@ -25,6 +25,22 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
+Phase 7 complete: btrbk hourly snapshots of the pool root (subvolume ".",
+ladder 24h/7d/4w) into /mnt/media/.snapshots; restic nightly (04:15) to
+the local repo /mnt/media/Backups/restic (its own subvolume so snapshots
+don't pin repo blocks) — sqlite-heavy services stop-copy-start via
+prepare/cleanup (cleanup is postStop, runs even on failure); adguardhome +
+headscale stay up (live-copied). DynamicUser state paths must be the
+/var/lib/private/* REAL paths (restic stores symlinks as symlinks):
+prowlarr, seerr, uptime-kuma, AdGuardHome. Restore verified end-to-end
+(restic-local dump + diff). B2 offsite: backup.b2 sub-options ready,
+waiting on Thomas's bucket + key -> b2-env.age. Scrutiny at disks. (port
+8085; pulls in influxdb2 — watch RAM). ntfy at ntfy. with
+homelab-notify@ OnFailure hooks: restic, btrbk, duckdns, scrub, and BOTH
+acme unit families (acme-<cert> AND acme-order-renew-<cert> — the timers
+trigger the latter). Verified: failure push arrives on topic "homelab".
+Onboarding of ALL users deliberately deferred to the end (Thomas's call).
+
 Phase 6 complete: Vaultwarden (vault., signups OPEN until roommates
 register — then flip homelab.services.vaultwarden.allowSignups off),
 Navidrome (music., library /mnt/media/Music — there is no Media/ parent
