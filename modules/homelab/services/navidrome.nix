@@ -20,6 +20,12 @@ in
     # read access to the music library
     users.groups.${homelab.group}.members = [ "navidrome" ];
 
+    homelab.services.backup = {
+      statePaths = [ "/var/lib/navidrome" ];
+      quiesceUnits = [ "navidrome" ];
+      excludePaths = [ "/var/lib/navidrome/cache" ];
+    };
+
     # Upstream would create a missing MusicFolder as :700 navidrome:media —
     # dead to every group member. Keep the create-only (:) semantics but
     # with the library's perms, so a fresh mount stays usable by all readers.

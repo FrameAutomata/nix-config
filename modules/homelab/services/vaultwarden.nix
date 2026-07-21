@@ -2,6 +2,7 @@
 let
   cfg = config.homelab.services.vaultwarden;
   homelab = config.homelab;
+  mkSecretOption = import ../secret-option.nix { inherit lib config; };
   subdomain = "vault";
 in
 {
@@ -12,15 +13,10 @@ in
       default = false;
       description = "Allow open account registration (hosts flip this on during household onboarding)";
     };
-    adminTokenFile = lib.mkOption {
-      type = lib.types.path;
-      default =
-        (config.age.secrets.vaultwarden-admin or (throw ''
-          homelab.services.vaultwarden: the host must declare
-          age.secrets.vaultwarden-admin (an EnvironmentFile with
-          ADMIN_TOKEN=..., which unlocks the /admin page)
-        '')).path;
-      defaultText = "config.age.secrets.vaultwarden-admin.path";
+    adminTokenFile = mkSecretOption {
+      secret = "vaultwarden-admin";
+      optionPath = "homelab.services.vaultwarden";
+      hint = "an EnvironmentFile with ADMIN_TOKEN=..., which unlocks the /admin page";
       description = "EnvironmentFile containing ADMIN_TOKEN=...";
     };
   };
@@ -38,6 +34,11 @@ in
         ROCKET_ADDRESS = "127.0.0.1";
         ROCKET_PORT = 8222;
       };
+    };
+
+    homelab.services.backup = {
+      statePaths = [ "/var/lib/vaultwarden" ];
+      quiesceUnits = [ "vaultwarden" ];
     };
 
     homelab.nginx.internal.${subdomain} = {

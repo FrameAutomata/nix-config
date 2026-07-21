@@ -10,6 +10,13 @@ in
 
   config = lib.mkIf cfg.enable {
     services.prowlarr.enable = true;
+
+    homelab.services.backup = {
+      # DynamicUser: the real state dir (see backup.nix statePaths docs)
+      statePaths = [ "/var/lib/private/prowlarr" ];
+      quiesceUnits = [ "prowlarr" ];
+    };
+
     homelab.nginx.internal.prowlarr = {
       proxyPass = "http://127.0.0.1:${toString config.services.prowlarr.settings.server.port}";
       dashboard = {

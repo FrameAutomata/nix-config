@@ -9,6 +9,12 @@ in
     # upstream defaults bind 127.0.0.1:3001; monitors are configured in its UI
     services.uptime-kuma.enable = true;
 
+    homelab.services.backup = {
+      # DynamicUser: the real state dir (see backup.nix statePaths docs)
+      statePaths = [ "/var/lib/private/uptime-kuma" ];
+      quiesceUnits = [ "uptime-kuma" ];
+    };
+
     homelab.nginx.internal.status = {
       proxyPass = "http://127.0.0.1:${config.services.uptime-kuma.settings.PORT}";
       # the UI is socket.io — dead without websocket upgrade

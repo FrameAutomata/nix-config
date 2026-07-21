@@ -56,11 +56,11 @@ in
       trustedInterfaces = [ "tailscale0" ];
     };
 
-    # a dead apex cert renewal takes roommates' remote access with it;
-    # scheduled renewals run through the separate order-renew unit
-    homelab.services.ntfy.notifyOnFailure = [
-      "acme-${homelab.baseDomain}"
-      "acme-order-renew-${homelab.baseDomain}"
+    # no quiesceUnits: stopping tailnet control for a backup window hurts
+    # more than a torn copy of small, re-registerable sqlite state
+    homelab.services.backup.statePaths = [
+      "/var/lib/headscale"
+      "/var/lib/tailscale" # this node's tailnet identity
     ];
   };
 }

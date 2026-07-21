@@ -23,5 +23,14 @@ in
       };
     };
     users.groups.${config.homelab.group}.members = [ "jellyfin" ];
+
+    homelab.services.backup = {
+      statePaths = [ "/var/lib/jellyfin" ];
+      quiesceUnits = [ "jellyfin" ];
+      excludePaths = [
+        "/var/lib/jellyfin/transcodes"
+        "/var/lib/jellyfin/cache"
+      ];
+    };
   };
 }

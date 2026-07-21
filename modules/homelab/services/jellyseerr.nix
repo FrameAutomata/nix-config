@@ -10,6 +10,13 @@ in
 
   config = lib.mkIf cfg.enable {
     services.seerr.enable = true;
+
+    homelab.services.backup = {
+      # DynamicUser: the real state dir (see backup.nix statePaths docs)
+      statePaths = [ "/var/lib/private/seerr" ];
+      quiesceUnits = [ "seerr" ];
+    };
+
     homelab.nginx.internal.requests = {
       proxyPass = "http://127.0.0.1:${toString config.services.seerr.port}";
       dashboard = {

@@ -10,6 +10,12 @@ in
       enable = true;
       group = config.homelab.group;
     };
+
+    homelab.services.backup = {
+      statePaths = [ "/var/lib/sonarr" ];
+      quiesceUnits = [ "sonarr" ];
+    };
+
     homelab.nginx.internal.sonarr = {
       proxyPass = "http://127.0.0.1:${toString config.services.sonarr.settings.server.port}";
       dashboard = {

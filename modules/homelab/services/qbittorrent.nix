@@ -70,6 +70,10 @@ in
       };
     };
 
+    # no quiesceUnits: a stop would drop active seeds for config files +
+    # fastresume data that are fine to live-copy
+    homelab.services.backup.statePaths = [ "/var/lib/qBittorrent" ];
+
     homelab.nginx.internal.qbt = {
       proxyPass = "http://127.0.0.1:${toString cfg.proxyPort}";
       dashboard = {

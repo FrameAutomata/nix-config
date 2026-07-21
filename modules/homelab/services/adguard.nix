@@ -48,6 +48,11 @@ in
       };
     };
 
+    # no quiesceUnits: stopping the LAN's DNS for a backup window hurts more
+    # than a torn copy of a nix-managed yaml + loss-tolerable stats dbs.
+    # DynamicUser: the real state dir (see backup.nix statePaths docs).
+    homelab.services.backup.statePaths = [ "/var/lib/private/AdGuardHome" ];
+
     homelab.nginx.internal.adguard = {
       proxyPass = "http://127.0.0.1:${toString config.services.adguardhome.port}";
       dashboard = {

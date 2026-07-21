@@ -10,6 +10,12 @@ in
       enable = true;
       group = config.homelab.group;
     };
+
+    homelab.services.backup = {
+      statePaths = [ "/var/lib/radarr" ];
+      quiesceUnits = [ "radarr" ];
+    };
+
     homelab.nginx.internal.radarr = {
       proxyPass = "http://127.0.0.1:${toString config.services.radarr.settings.server.port}";
       dashboard = {

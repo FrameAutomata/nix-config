@@ -27,6 +27,11 @@ in
     # ...and the media group, so accounts scoped to the library can write it
     users.groups.${homelab.group}.members = [ fb.user ];
 
+    homelab.services.backup = {
+      statePaths = [ "/var/lib/filebrowser" ];
+      quiesceUnits = [ "filebrowser" ];
+    };
+
     # The upstream module tmpfiles-manages settings.root — chown+chmod to
     # filebrowser:filebrowser 0700, re-applied on every boot — which on the
     # live media mount would cut off samba and every media service. There is

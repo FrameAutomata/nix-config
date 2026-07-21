@@ -86,5 +86,8 @@ in
       enable = true;
       openFirewall = true;
     };
+
+    # smbpasswd database; small tdb files, safe to live-copy
+    homelab.services.backup.statePaths = [ "/var/lib/samba" ];
   };
 }

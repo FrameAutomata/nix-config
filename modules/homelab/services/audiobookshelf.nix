@@ -23,5 +23,10 @@ in
       };
     };
     users.groups.${config.homelab.group}.members = [ "audiobookshelf" ];
+
+    homelab.services.backup = {
+      statePaths = [ "/var/lib/audiobookshelf" ];
+      quiesceUnits = [ "audiobookshelf" ];
+    };
   };
 }
