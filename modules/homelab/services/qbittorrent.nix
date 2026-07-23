@@ -7,10 +7,12 @@ let
   homelab = config.homelab;
   cfg = homelab.services.qbittorrent;
   ns = homelab.services.wireguard-netns.namespace;
-  # inside the netns qBittorrent keeps its default 8080 (nothing else lives
-  # there); on the host that port belongs to Headscale, so the proxy listens
-  # on proxyPort instead
-  webuiPort = 8080;
+  # qBittorrent listens on proxyPort INSIDE the netns too (free there — on
+  # the host 8080 belongs to Headscale, hence the separate option): its
+  # Host-header validation rejects any request whose port doesn't match the
+  # listening port, so the hop through the socket proxy must be same-port or
+  # direct clients like the arrs get a blanket 401
+  webuiPort = cfg.proxyPort;
 in
 {
   options.homelab.services.qbittorrent = {
