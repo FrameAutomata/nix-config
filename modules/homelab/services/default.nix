@@ -11,6 +11,7 @@
     ./prowlarr.nix
     ./sonarr.nix
     ./radarr.nix
+    ./lidarr.nix
     ./jellyseerr.nix
     ./vaultwarden.nix
     ./navidrome.nix

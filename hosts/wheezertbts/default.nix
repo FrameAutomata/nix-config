@@ -34,6 +34,7 @@
       prowlarr.enable = true;
       sonarr.enable = true;
       radarr.enable = true;
+      lidarr.enable = true;
       jellyseerr.enable = true;
       # Surfshark manual WireGuard (us-dal); the .age holds the keys, these
       # are the non-secret halves of the same config
