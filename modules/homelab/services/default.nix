@@ -12,7 +12,6 @@
     ./sonarr.nix
     ./radarr.nix
     ./lidarr.nix
-    ./readarr.nix
     ./jellyseerr.nix
     ./vaultwarden.nix
     ./navidrome.nix
