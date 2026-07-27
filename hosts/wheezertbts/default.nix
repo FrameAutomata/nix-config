@@ -15,6 +15,7 @@
   age.secrets.surfshark-wg.file = ./secrets/surfshark-wg.age;
   age.secrets.vaultwarden-admin.file = ./secrets/vaultwarden-admin.age;
   age.secrets.restic-password.file = ./secrets/restic-password.age;
+  age.secrets.b2-env.file = ./secrets/b2-env.age;
 
   homelab = {
     baseDomain = "wheezertbts.duckdns.org";
@@ -55,8 +56,15 @@
       filebrowser.enable = true;
       homepage.enable = true;
       uptime-kuma.enable = true;
-      # b2 sub-config joins once the bucket + application key exist (plan §8)
-      backup.enable = true;
+      backup = {
+        enable = true;
+        # offsite copy of the local repo; the bucket's lifecycle rule is
+        # "keep only the last version" so prune actually reclaims space
+        b2 = {
+          enable = true;
+          repository = "s3:s3.us-east-005.backblazeb2.com/wheezertbts-restic-a7f2";
+        };
+      };
       scrutiny.enable = true;
       ntfy.enable = true;
       welcome.enable = true;
