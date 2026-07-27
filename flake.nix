@@ -2,6 +2,15 @@
   description = "NixOS homelab — wheezertbts";
 
   inputs = {
+    # TEMPORARY: flake.lock is pinned to f197f8e0c66a, NOT this branch's tip.
+    # Branch head cannot build — tailscale 1.98.9 has a bad vendor hash
+    # upstream, and tailscale is in system-path, so it fails the whole closure.
+    # f197f8e0c66a is the newest 26.05 rev that has vaultwarden >= 1.37.0
+    # (required by Bitwarden clients 2026.7.0+) and still predates that bump,
+    # so the pin has a floor as well as a ceiling — don't roll it back either.
+    # To unpin: nix build --no-link github:nixos/nixpkgs/nixos-26.05#tailscale
+    # If that builds, `nix flake update nixpkgs` and delete this comment.
+    # Until then a plain `nix flake update` silently re-breaks the rebuild.
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     # Tracks upstream Claude Code releases (hourly bot) — do NOT set
     # inputs.nixpkgs.follows here: overriding it changes the derivation hash
