@@ -14,6 +14,7 @@ in
   "vaultwarden-admin.age".publicKeys = all;
   # restic repo password (shared by the local and B2 repos)
   "restic-password.age".publicKeys = all;
-  # b2-env.age (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY) joins here once
-  # Thomas creates the B2 bucket + application key (plan §8)
+  # EnvironmentFile with AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY for the B2
+  # application key (restic talks to B2 over its S3-compatible API)
+  "b2-env.age".publicKeys = all;
 }
