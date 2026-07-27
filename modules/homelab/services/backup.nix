@@ -147,6 +147,15 @@ in
         Persistent = true;
       };
     };
+    # Deliberately NO `initialize = true` here. This job has neither
+    # --copy-chunker-params nor RESTIC_FROM_REPOSITORY, so letting it create
+    # the repo would give B2 fresh chunker params and permanently destroy
+    # cross-repo dedup with the local repo: every later `restic copy`
+    # re-uploads what it should have deduped, and it is unrecoverable without
+    # deleting and re-seeding the whole offsite repo. Until the first
+    # restic-b2-copy has run, this failing with exit 10 is the correct and
+    # visible outcome — seed the repo by running restic-b2-copy, not by
+    # letting the pruner initialise it.
     services.restic.backups.b2-prune = lib.mkIf cfg.b2.enable {
       repository = cfg.b2.repository;
       passwordFile = cfg.passwordFile;
@@ -189,17 +198,26 @@ in
       # longer falls through to `init`. Swallowing them made the two cases
       # indistinguishable — both are silent for the ~15 min restic spends
       # retrying — and then left a half-initialised repo at the end of it.
+      #
+      # On the FIRST run only, expect one `Fatal: repository does not exist`
+      # in the journal just before the "initialising" line: that is the probe
+      # reporting the exit 10 we key on, not a failure. It never recurs.
+      #
+      # The messages read $RESTIC_REPOSITORY instead of interpolating the Nix
+      # value: EnvironmentFile= overrides Environment=, so if b2-env.age ever
+      # grows a RESTIC_REPOSITORY= line, an interpolated message would name a
+      # different repo than the one restic actually acts on.
       script = ''
         rc=0
         restic cat config >/dev/null || rc=$?
         case $rc in
           0) ;;
           10)
-            echo "no repository at ${cfg.b2.repository} yet — initialising"
+            echo "no repository at $RESTIC_REPOSITORY yet — initialising"
             restic init --copy-chunker-params
             ;;
           *)
-            echo "cannot open ${cfg.b2.repository} (restic exit $rc); refusing to initialise" >&2
+            echo "cannot open $RESTIC_REPOSITORY (restic exit $rc); refusing to initialise" >&2
             exit $rc
             ;;
         esac
