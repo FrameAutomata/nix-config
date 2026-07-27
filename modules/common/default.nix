@@ -31,6 +31,12 @@
     tmux
   ];
 
+  # Running the daemon is base infrastructure; which interfaces answer on :22
+  # is per-host topology, so the consuming config owns the firewall opening.
+  # NOTE this means a config importing only this module has a running but
+  # unreachable sshd — opening :22 is that config's job.
   services.openssh.enable = true;
-  networking.firewall.allowedTCPPorts = [ 22 ];
+  # upstream defaults this to true, which would put 22 on the GLOBAL
+  # allowedTCPPorts (every interface) behind our back
+  services.openssh.openFirewall = false;
 }

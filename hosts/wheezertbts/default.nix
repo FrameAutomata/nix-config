@@ -25,6 +25,17 @@
     tailnetIP = "100.64.0.1";
     timeZone = "America/Chicago";
     user = "wheezertbts";
+    # Admin SSH is host topology, not a household service: modules/common
+    # runs sshd and leaves reachability to the consuming config (here).
+    # For THIS box specifically — it is single-NIC, so enp3s0 carries LAN
+    # traffic AND anything the gateway routes in. Inbound reachability is
+    # therefore governed by the gateway (no IPv4 port-forward; inbound IPv6
+    # blocked, verified from outside 2026-07-27), not by this rule. What the
+    # rule buys is keeping :22 off wlp4s0 if that adapter ever comes up on
+    # some other network. Remote admin rides the tailnet.
+    # derived, not [ 22 ]: upstream's openFirewall tracks services.openssh.ports
+    # (sshd.nix), so hardcoding would silently desync if that port ever moves
+    lanPorts.ssh.tcp = config.services.openssh.ports;
     services = {
       adguard.enable = true;
       jellyfin.enable = true;
