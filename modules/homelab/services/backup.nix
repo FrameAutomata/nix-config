@@ -181,8 +181,28 @@ in
         EnvironmentFile = cfg.b2.environmentFile;
         CacheDirectory = "restic-b2-copy";
       };
+      # `restic cat config` reports an absent repo as exit 10 (restic >=0.17),
+      # which is what distinguishes a genuine first run from a backend that
+      # rejected us — bad credentials, bucket typo, DNS. Keying on the code
+      # rather than "any failure" matters twice over: restic's own errors
+      # reach the journal instead of being swallowed, and a broken backend no
+      # longer falls through to `init`. Swallowing them made the two cases
+      # indistinguishable — both are silent for the ~15 min restic spends
+      # retrying — and then left a half-initialised repo at the end of it.
       script = ''
-        restic cat config >/dev/null 2>&1 || restic init --copy-chunker-params
+        rc=0
+        restic cat config >/dev/null || rc=$?
+        case $rc in
+          0) ;;
+          10)
+            echo "no repository at ${cfg.b2.repository} yet — initialising"
+            restic init --copy-chunker-params
+            ;;
+          *)
+            echo "cannot open ${cfg.b2.repository} (restic exit $rc); refusing to initialise" >&2
+            exit $rc
+            ;;
+        esac
         restic copy --cleanup-cache --retry-lock 1h
       '';
     };
