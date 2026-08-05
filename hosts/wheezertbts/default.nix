@@ -155,6 +155,7 @@
   environment.systemPackages = with pkgs; [
     claude-code
     gh
+    headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
 
   # This host's GTX 1650 does the transcoding (driver stack: modules/common/nvidia.nix)
