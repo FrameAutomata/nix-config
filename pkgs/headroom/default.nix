@@ -26,18 +26,17 @@
 #      LD_LIBRARY_PATH — an exported path would be inherited by `claude` and
 #      every other child process `headroom wrap` spawns, and Nix binaries use
 #      DT_RUNPATH (searched *after* LD_LIBRARY_PATH), so it could shadow their
-#      own libstdc++ with this one.
+#      own libstdc++ with this one. That stamping MUST use --force-rpath; see
+#      the comment on the patchelf call for what silently breaks otherwise.
 #   3. headroom ships/downloads generic-linux CLI binaries (ast-grep, difft,
 #      scc) that cannot exec here. nixpkgs builds of all three are put on PATH
 #      and symlinked over the broken ones in the venv.
 #
-# Known-not-our-problem: /health reports kompress (the ML *prose* compressor)
-# as unhealthy with a null backend. That is an upstream bug, not a NixOS one —
-# 0.33.0 asks HuggingFace for chopratejas/kompress-v2-base/onnx/kompress-int8.onnx,
-# which 404s; the repo only publishes kompress-fp32.onnx and kompress-int8-wo.onnx.
-# Verified here that onnxruntime loads kompress-int8-wo.onnx and builds an
-# InferenceSession fine, so this fixes itself upstream with no change below.
-# Everything else (JSON/code compression, proxy, routing) is unaffected.
+# Known and deliberately not fixed: `import cv2` fails on libxcb.so.1. opencv
+# comes in as a transitive wheel of the [all] extra and headroom never imports
+# it (grep says so), so adding an X11 stack to a headless box to satisfy a
+# module nothing loads is the wrong trade. Revisit only if a traceback proves
+# otherwise.
 #
 # Upgrades: bump `version`, rebuild. The stamp file records the version and the
 # native-lib paths, so a nixpkgs bump that moves libstdc++ also forces a clean
@@ -61,6 +60,12 @@
 
 let
   version = "0.33.0";
+
+  # Bump when the provisioning *algorithm* changes rather than the version or
+  # the library paths. Without it a fix to how the venv is built cannot reach a
+  # venv that already exists: the stamp would still match and the whole block
+  # would be skipped. 2 = patchelf --force-rpath.
+  provisionEpoch = "2";
 
   # Everything the wheels' .so files need beyond libc.
   nativeLibs = lib.makeLibraryPath [
@@ -90,7 +95,7 @@ writeShellApplication {
     # Any change to the pinned version OR to the native library paths (i.e. a
     # nixpkgs bump) invalidates the venv — a stale RPATH points into a garbage
     # collected store path and fails at import time, not at rebuild time.
-    want="${version} ${nativeLibs}"
+    want="${version} ${provisionEpoch} ${nativeLibs}"
 
     if [ "$(cat "$stamp" 2>/dev/null || true)" != "$want" ]; then
       echo "headroom: provisioning venv for ${version} (one-off, ~1-2 min)..." >&2
@@ -112,6 +117,17 @@ writeShellApplication {
 
       # Stamp an RPATH into every extension module so imports resolve without
       # leaking LD_LIBRARY_PATH into child processes.
+      #
+      # --force-rpath is as load-bearing as --link-mode=copy above. These are
+      # auditwheel wheels: they bundle their native deps in a sibling <pkg>.libs
+      # and reach them with DT_RPATH "$ORIGIN". patchelf writes DT_RUNPATH by
+      # default, and the two are NOT interchangeable — RPATH is inherited by the
+      # transitive loads a library performs, RUNPATH is not. Converting them
+      # therefore keeps direct imports working while breaking anything that
+      # resolves a bundled lib one hop down, which is a genuinely confusing
+      # failure: scipy imports fine, sklearn dies on libquadmath, shapely on
+      # libgeos, and kompress silently reports backend:null because its ONNX
+      # load fell through to a PyTorch path that failed the same way.
       patched=0
       while IFS= read -r -d "" so; do
         head -c4 "$so" | grep -q ELF || continue
@@ -119,7 +135,7 @@ writeShellApplication {
         case ":$old:" in
           *"${nativeLibs}"*) continue ;;
         esac
-        patchelf --set-rpath "''${old:+$old:}${nativeLibs}" "$so" 2>/dev/null && patched=$((patched + 1))
+        patchelf --force-rpath --set-rpath "''${old:+$old:}${nativeLibs}" "$so" 2>/dev/null && patched=$((patched + 1))
       done < <(find "$venv/lib" -type f \( -name "*.so" -o -name "*.so.*" \) -print0)
       echo "headroom: patched $patched shared objects" >&2
 
