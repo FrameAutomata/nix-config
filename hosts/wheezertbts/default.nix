@@ -15,6 +15,7 @@
   age.secrets.surfshark-wg.file = ./secrets/surfshark-wg.age;
   age.secrets.vaultwarden-admin.file = ./secrets/vaultwarden-admin.age;
   age.secrets.restic-password.file = ./secrets/restic-password.age;
+  age.secrets.b2-env.file = ./secrets/b2-env.age;
 
   homelab = {
     baseDomain = "wheezertbts.duckdns.org";
@@ -24,6 +25,17 @@
     tailnetIP = "100.64.0.1";
     timeZone = "America/Chicago";
     user = "wheezertbts";
+    # Admin SSH is host topology, not a household service: modules/common
+    # runs sshd and leaves reachability to the consuming config (here).
+    # For THIS box specifically — it is single-NIC, so enp3s0 carries LAN
+    # traffic AND anything the gateway routes in. Inbound reachability is
+    # therefore governed by the gateway (no IPv4 port-forward; inbound IPv6
+    # blocked, verified from outside 2026-07-27), not by this rule. What the
+    # rule buys is keeping :22 off wlp4s0 if that adapter ever comes up on
+    # some other network. Remote admin rides the tailnet.
+    # derived, not [ 22 ]: upstream's openFirewall tracks services.openssh.ports
+    # (sshd.nix), so hardcoding would silently desync if that port ever moves
+    lanPorts.ssh.tcp = config.services.openssh.ports;
     services = {
       adguard.enable = true;
       jellyfin.enable = true;
@@ -55,8 +67,15 @@
       filebrowser.enable = true;
       homepage.enable = true;
       uptime-kuma.enable = true;
-      # b2 sub-config joins once the bucket + application key exist (plan §8)
-      backup.enable = true;
+      backup = {
+        enable = true;
+        # offsite copy of the local repo; the bucket's lifecycle rule is
+        # "keep only the last version" so prune actually reclaims space
+        b2 = {
+          enable = true;
+          repository = "s3:s3.us-east-005.backblazeb2.com/wheezertbts-restic-a7f2";
+        };
+      };
       scrutiny.enable = true;
       ntfy.enable = true;
       welcome.enable = true;
@@ -136,6 +155,7 @@
   environment.systemPackages = with pkgs; [
     claude-code
     gh
+    headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
 
   # This host's GTX 1650 does the transcoding (driver stack: modules/common/nvidia.nix)

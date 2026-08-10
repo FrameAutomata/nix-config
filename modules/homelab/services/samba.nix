@@ -60,7 +60,8 @@ in
 
     services.samba = {
       enable = true;
-      openFirewall = true;
+      # via the lanPorts registry instead of upstream's global list
+      openFirewall = false;
       settings = {
         global."workgroup" = "WORKGROUP";
       }
@@ -84,7 +85,22 @@ in
 
     services.samba-wsdd = {
       enable = true;
-      openFirewall = true;
+      openFirewall = false;
+    };
+
+    # Hand copies of the port sets the upstream openFirewall flags would have
+    # opened. NOTHING checks these against nixpkgs — there is no way to read
+    # what upstream *would* set without enabling the flag — so re-read the
+    # sources on a nixpkgs bump (last verified nixos-26.05 f197f8e):
+    #   nixos/modules/services/network-filesystems/samba.nix:258-265
+    #   nixos/modules/services/network-filesystems/samba-wsdd.nix:143-146
+    homelab.lanPorts.samba = {
+      tcp = [ 139 445 ]; # SMB
+      udp = [ 137 138 ]; # NetBIOS name/datagram
+    };
+    homelab.lanPorts.samba-wsdd = {
+      tcp = [ 5357 ]; # WSD HTTP
+      udp = [ 3702 ]; # WS-Discovery multicast
     };
 
     # smbpasswd database; small tdb files, safe to live-copy

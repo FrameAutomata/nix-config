@@ -68,13 +68,10 @@ in
     services.headscale.settings.dns.nameservers.global =
       lib.mkIf config.homelab.services.headscale.enable [ homelab.tailnetIP ];
 
-    # DNS on the LAN interface only (not the WAN-exposed default chain);
-    # tailscale0 is a trusted interface, so tailnet clients already reach :53.
-    # UDP 67 additionally when AdGuard is the LAN's DHCP server.
-    networking.firewall.interfaces.${homelab.lanInterface} = {
-      allowedTCPPorts = [ 53 ];
-      allowedUDPPorts =
-        [ 53 ] ++ lib.optional (config.services.adguardhome.settings.dhcp.enabled or false) 67;
+    # UDP 67 additionally when AdGuard is the LAN's DHCP server
+    homelab.lanPorts.adguard = {
+      tcp = [ 53 ];
+      udp = [ 53 ] ++ lib.optional (config.services.adguardhome.settings.dhcp.enabled or false) 67;
     };
   };
 }
