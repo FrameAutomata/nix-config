@@ -14,6 +14,13 @@ in
         # explicit, not default-restating: web UI reachable only through the
         # internal vhost, even if the upstream default bind ever widens
         Address = "127.0.0.1";
+        # Lidarr moves + retags files on import, so Navidrome sees the old
+        # paths vanish and, defaulting to PurgeMissing="never", keeps them as
+        # unplayable art-less ghost albums forever (the retag stops it matching
+        # the moved copies). Prune them — but only on a *full* scan, so a
+        # transient /mnt/media unmount during a routine quick scan can't wipe
+        # the library (and everyone's play counts/playlists) with it.
+        Scanner.PurgeMissing = "full";
       };
     };
 
