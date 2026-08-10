@@ -103,8 +103,8 @@ let
       SHEET
 
       ${lib.optionalString
-        (services.jellyfin.enable || services.navidrome.enable || services.audiobookshelf.enable)
-        ''echo "still manual: create '$handle' in the Jellyfin / Navidrome / Audiobookshelf admin UIs" >&2''}
+        (services.jellyfin.enable || services.navidrome.enable || services.audiobookshelf.enable || services.immich.enable)
+        ''echo "still manual: create '$handle' in the Jellyfin / Navidrome / Audiobookshelf / Immich admin UIs" >&2''}
     '';
   };
 in

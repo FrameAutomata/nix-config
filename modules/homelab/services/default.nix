@@ -2,6 +2,7 @@
   imports = [
     ./adguard.nix
     ./jellyfin.nix
+    ./immich.nix
     ./audiobookshelf.nix
     ./samba.nix
     ./headscale.nix
