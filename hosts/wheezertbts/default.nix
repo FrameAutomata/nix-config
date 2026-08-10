@@ -39,6 +39,7 @@
     services = {
       adguard.enable = true;
       jellyfin.enable = true;
+      immich.enable = true;
       audiobookshelf.enable = true;
       samba.enable = true;
       headscale.enable = true;

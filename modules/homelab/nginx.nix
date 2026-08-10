@@ -49,6 +49,17 @@ in
               default = false;
               description = "Enable websocket proxying";
             };
+            clientMaxBodySize = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              example = "0";
+              description = ''
+                Value for nginx's `client_max_body_size` on this vhost, e.g.
+                "0" (no limit) or "500m". Left null, no directive is emitted
+                and the global `services.nginx.clientMaxBodySize` (10m) applies
+                — too small for services that accept large uploads (Immich).
+              '';
+            };
             dashboard = lib.mkOption {
               type = lib.types.nullOr (
                 lib.types.submodule {
@@ -135,14 +146,20 @@ in
               # and lockouts). Per-location so the apex vhost stays untouched.
               recommendedProxySettings = true;
             };
-            extraConfig = ''
-              allow ${homelab.lanCIDR};
-              allow ${homelab.tailnetCIDR};
-              allow ${homelab.tailnetCIDRv6};
-              allow 127.0.0.1;
-              allow ::1;
-              deny all;
-            '';
+            # optional directive prepended by string concat so the allow/deny
+            # block below stays byte-identical for every vhost that sets no
+            # body-size override (null => "" => unchanged output)
+            extraConfig =
+              lib.optionalString (vh.clientMaxBodySize != null)
+                "client_max_body_size ${vh.clientMaxBodySize};\n"
+              + ''
+                allow ${homelab.lanCIDR};
+                allow ${homelab.tailnetCIDR};
+                allow ${homelab.tailnetCIDRv6};
+                allow 127.0.0.1;
+                allow ::1;
+                deny all;
+              '';
           }
         ) cfg.internal
         // {
