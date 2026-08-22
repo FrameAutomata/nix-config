@@ -5,27 +5,15 @@
 let
   cfg = config.homelab.services.ntfy;
   homelab = config.homelab;
-  subdomain = "ntfy";
+  subdomain = (import ../../../site.nix).ntfySubdomain;
   port = 2586;
-  notifyScript = pkgs.writeShellScript "homelab-notify" ''
-    unit="$1"
-    # journal tail goes via stdin, not argv — argv is world-readable in /proc
-    ${pkgs.systemd}/bin/journalctl -u "$unit" -n 15 --no-pager -o cat \
-      | ${pkgs.coreutils}/bin/tail -c 3800 \
-      | ${pkgs.curl}/bin/curl -fsS -m 10 \
-          -H "Title: ${config.networking.hostName}: $unit failed" \
-          -H "Priority: high" \
-          -H "Tags: rotating_light" \
-          --data-binary @- \
-          "http://127.0.0.1:${toString port}/${cfg.topic}"
-  '';
 in
 {
   options.homelab.services.ntfy = {
     enable = lib.mkEnableOption "ntfy push notification server";
     topic = lib.mkOption {
       type = lib.types.str;
-      default = "homelab";
+      default = (import ../../../site.nix).ntfyTopic;
       description = "Topic failure alerts publish to; phones subscribe at https://ntfy.<baseDomain>/<topic>";
     };
     notifyOnFailure = lib.mkOption {
@@ -65,19 +53,13 @@ in
 
     # No auth: anyone who can reach the vhost (LAN/tailnet — household)
     # can read/publish topics. Add ntfy ACLs before ever exposing this wider.
-    systemd.services = {
-      "homelab-notify@" = {
-        description = "Failure notification for %i";
-        # if ntfy itself is down the push just fails; nothing depends on it
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${notifyScript} %i";
-        };
-      };
-    }
-    // lib.genAttrs cfg.notifyOnFailure (unit: {
-      onFailure = [ "homelab-notify@${unit}.service" ];
-    });
+    # if ntfy itself is down the push just fails; nothing depends on it
+    systemd.services = import ../../notify.nix {
+      inherit pkgs lib;
+      inherit (cfg) notifyOnFailure;
+      hostName = config.networking.hostName;
+      endpoint = "http://127.0.0.1:${toString port}/${cfg.topic}";
+    };
 
     homelab.nginx.internal.${subdomain} = {
       proxyPass = "http://127.0.0.1:${toString port}";

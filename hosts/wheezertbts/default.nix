@@ -1,5 +1,9 @@
 { config, pkgs, ... }:
 
+let
+  site = import ../../site.nix;
+in
+
 {
   imports = [
     ./hardware-configuration.nix
@@ -18,12 +22,9 @@
   age.secrets.b2-env.file = ./secrets/b2-env.age;
 
   homelab = {
-    baseDomain = "wheezertbts.duckdns.org";
-    lanCIDR = "192.168.1.0/24";
-    lanIP = "192.168.1.239";
+    inherit (site) baseDomain lanCIDR lanIP timeZone;
     lanInterface = "enp3s0";
     tailnetIP = "100.64.0.1";
-    timeZone = "America/Chicago";
     user = "wheezertbts";
     # Admin SSH is host topology, not a household service: modules/common
     # runs sshd and leaves reachability to the consuming config (here).
