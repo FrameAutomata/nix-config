@@ -36,6 +36,12 @@ in
     KbdInteractiveAuthentication = false;
   };
 
+  # Pin the apex to the LAN IP. A client not yet on the tailnet cannot use
+  # AdGuard's split DNS, so it resolves this to the WAN address and depends on
+  # router hairpin NAT — which is what hangs `tailscale up` on a first join.
+  # hosts/wheezertbts pins the same name for the same reason.
+  networking.extraHosts = "${site.lanIP} ${site.baseDomain}";
+
   homelabClient = {
     enable = true;
     notifyOnFailure = [ "nixos-upgrade" ];

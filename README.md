@@ -121,10 +121,15 @@ properly. Until then, set the password on the server with
 
 ```sh
 sudo install -m 0600 -D /dev/null /etc/samba/credentials-homelab
-sudo tee /etc/samba/credentials-homelab >/dev/null <<'EOF'
+sudo nano /etc/samba/credentials-homelab
+```
+
+with exactly these two lines — an editor rather than a heredoc, which
+would put the password into your shell history:
+
+```
 username=wheezertbts
 password=<the smbpasswd password>
-EOF
 ```
 
 Shares mount on demand under `/mnt/homelab/`; a missing credentials file shows
