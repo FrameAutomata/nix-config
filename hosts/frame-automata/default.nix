@@ -7,6 +7,7 @@ in
 {
   imports = [
     ./hardware-configuration.nix
+    ./filesystems.nix
     ../../modules/common
     ../../modules/common/amdgpu.nix
     ../../modules/workstation
