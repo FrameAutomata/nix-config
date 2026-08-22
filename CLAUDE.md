@@ -1,5 +1,6 @@
-# nix-config — wheezertbts homelab
-NixOS 26.05 flake for the household homelab server. Live box; roommates depend on it.
+# nix-config — wheezertbts homelab + frame-automata desktop
+NixOS 26.05 flake. Two hosts: `wheezertbts` (live server; roommates depend on
+it) and `frame-automata` (Thomas's desktop, admin workstation).
 
 ## Hard rules
 - Never disable openssh / remove authorized keys / close port 22.
@@ -9,19 +10,23 @@ NixOS 26.05 flake for the household homelab server. Live box; roommates depend o
 - Don't restructure /mnt/media data without explicit approval.
 
 ## Commands
-- Rebuild: sudo nixos-rebuild switch --flake .#wheezertbts
+- Rebuild: sudo nixos-rebuild switch --flake .#wheezertbts (or .#frame-automata)
 - Safe try: sudo nixos-rebuild test --flake .#wheezertbts
 - Rollback: sudo nixos-rebuild switch --rollback
 - Secret edit (run from the secrets dir — the CLI resolves rules relative to cwd):
   cd hosts/wheezertbts/secrets
   on the server (FILE must come right after -e, and sudo may drop $EDITOR):
     sudo EDITOR=nano agenix -e <name>.age -i /etc/ssh/ssh_host_ed25519_key
-  on the desktop (corbi key): agenix -e <name>.age
+  on the desktop (admin key at ~/.ssh/id_ed25519): agenix -e <name>.age
   Keep the DUCKDNS_TOKEN=... env format when editing duckdns-token.age.
 
 ## Map
-- hosts/wheezertbts/ — machine config + secrets
+- hosts/wheezertbts/ — server config + secrets
+- hosts/frame-automata/ — desktop; modules/workstation + modules/homelab-client
+- The desktop has its OWN nixpkgs-desktop input: never `nix flake update` bare,
+  it would move both hosts. Update one input by name.
 - modules/homelab/ — options + service modules (homelab.services.<name>)
+- site.nix + modules/notify.nix — shared by both hosts; edit once, not twice
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note

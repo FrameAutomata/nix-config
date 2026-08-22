@@ -26,7 +26,9 @@
     "claude-code": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": [
+          "nixpkgs"
+        ]
       },
       "locked": {
         "lastModified": 1784914161,
@@ -39,6 +41,26 @@
       "original": {
         "owner": "sadjow",
         "repo": "claude-code-nix",
+        "type": "github"
+      }
+    },
+    "claude-desktop": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs-desktop"
+        ]
+      },
+      "locked": {
+        "lastModified": 1787120972,
+        "narHash": "sha256-rtciwPYJ5BJVTHM9+kkisrrflpL3j99BVmMMsybS7Y8=",
+        "owner": "nmcbride",
+        "repo": "claude-desktop-nix",
+        "rev": "0e01178398eb79da632576a787785598fdf03a51",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nmcbride",
+        "repo": "claude-desktop-nix",
         "type": "github"
       }
     },
@@ -62,22 +84,6 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1784783405,
-        "narHash": "sha256-4IHyyLgLBdKefkljdKod4IMn023pQiDXAWJA187cmdY=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "7525d999cd850b9a488817abc89c75dc733acf17",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs_2": {
-      "locked": {
         "lastModified": 1784942182,
         "narHash": "sha256-j7MkoH3vwVn5Kzc00f+MJ2HMmLiui4XNANShoroWGw0=",
         "owner": "nixos",
@@ -92,11 +98,29 @@
         "type": "github"
       }
     },
+    "nixpkgs-desktop": {
+      "locked": {
+        "lastModified": 1787204541,
+        "narHash": "sha256-OURZPknrTjQrlNyxPdqzyqmU/81Wes1CUP/Ft1Rv/YI=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "5880666fd9eb563038431edb35c2d0aa595884e6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "agenix": "agenix",
         "claude-code": "claude-code",
-        "nixpkgs": "nixpkgs_2"
+        "claude-desktop": "claude-desktop",
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-desktop": "nixpkgs-desktop"
       }
     },
     "systems": {
