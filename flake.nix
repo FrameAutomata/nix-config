@@ -2,19 +2,12 @@
   description = "NixOS configs — wheezertbts (homelab server), frame-automata (desktop)";
 
   inputs = {
-    # TEMPORARY: flake.lock is pinned to f197f8e0c66a, NOT this branch's tip.
-    # Branch head cannot build — tailscale 1.98.9 has a bad vendor hash
-    # upstream, and tailscale is in system-path, so it fails the whole closure.
-    # f197f8e0c66a is the newest 26.05 rev that has vaultwarden >= 1.37.0
-    # (required by Bitwarden clients 2026.7.0+) and still predates that bump,
-    # so the pin has a floor as well as a ceiling — don't roll it back either.
-    # To unpin: nix build --no-link github:nixos/nixpkgs/nixos-26.05#tailscale
-    # If that builds, `nix flake update nixpkgs` and delete this comment.
-    # Until then a plain `nix flake update` silently re-breaks the rebuild.
-    #
-    # 2026-08-21: likely clearable — 26.05 head (02e08985a27c) carries
-    # tailscale 1.98.10 and vaultwarden 1.37.1, and Hydra has the tailscale
-    # build cached. Verify on the box first.
+    # The server's nixpkgs. Was pinned to f197f8e0c66a from 2026-07-25 because
+    # tailscale 1.98.9 had a bad vendor hash upstream and tailscale is in
+    # system-path, so it failed the whole closure. Unpinned 2026-08-22: head
+    # carries tailscale 1.98.10, which builds, and vaultwarden 1.37.1, which
+    # keeps the >= 1.37.0 floor that Bitwarden clients 2026.7.0+ require.
+    # Update just it with `nix flake update nixpkgs`.
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
 
     # The desktop's own nixpkgs. Same branch, separate input so a server-side
@@ -82,13 +75,14 @@
           ];
         };
 
-        # No agenix.nixosModules.default: this host declares no age.secrets. It
-        # is the *editor* of the server's secrets (keys.nix `admin`) — the
-        # CLI's job, not the activation module's.
+        # Carries both agenix roles: it decrypts its own secrets at activation
+        # (samba-client.age, via the host key in keys.nix) and it holds the
+        # `admin` key that edits every secret, including the server's.
         frame-automata = nixpkgs-desktop.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
             ./hosts/frame-automata
+            agenix.nixosModules.default
             shared
             # The module, not just the overlay: Cowork's micro-VM needs OVMF at
             # FHS paths, virtiofsd, vhost_vsock and kvm group membership, which a

@@ -3,8 +3,11 @@
 # If the host key ever rotates (OS reinstall), secrets must be rekeyed from
 # the desktop (the admin key is the recovery path): agenix -r from this dir.
 let
-  keys = import ../keys.nix;
-  all = [ keys.admin keys.host ];
+  keys = import ../../../keys.nix;
+  # Same two keys this file has always named, so nothing here needs rekeying:
+  # the desktop's host key is enrolled in keys.nix but deliberately not added
+  # to these — it has no business decrypting restic or B2 credentials.
+  all = [ keys.admin keys.hosts.wheezertbts ];
 in
 {
   "duckdns-token.age".publicKeys = all;
