@@ -7,6 +7,12 @@ let
   homelab = config.homelab;
   subdomain = (import ../../../site.nix).ntfySubdomain;
   port = 2586;
+  notify = import ../../notify.nix {
+    inherit config pkgs lib;
+    inherit (cfg) notifyOnFailure;
+    hostName = config.networking.hostName;
+    endpoint = "http://127.0.0.1:${toString port}/${cfg.topic}";
+  };
 in
 {
   options.homelab.services.ntfy = {
@@ -54,12 +60,8 @@ in
     # No auth: anyone who can reach the vhost (LAN/tailnet — household)
     # can read/publish topics. Add ntfy ACLs before ever exposing this wider.
     # if ntfy itself is down the push just fails; nothing depends on it
-    systemd.services = import ../../notify.nix {
-      inherit pkgs lib;
-      inherit (cfg) notifyOnFailure;
-      hostName = config.networking.hostName;
-      endpoint = "http://127.0.0.1:${toString port}/${cfg.topic}";
-    };
+    inherit (notify) assertions;
+    inherit (notify) systemd;
 
     homelab.nginx.internal.${subdomain} = {
       proxyPass = "http://127.0.0.1:${toString port}";

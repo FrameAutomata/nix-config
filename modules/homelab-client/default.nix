@@ -5,6 +5,12 @@
 let
   cfg = config.homelabClient;
   site = import ../../site.nix;
+  notify = import ../notify.nix {
+    inherit config pkgs lib;
+    inherit (cfg) notifyOnFailure;
+    hostName = config.networking.hostName;
+    endpoint = "https://${site.ntfySubdomain}.${cfg.baseDomain}/${cfg.ntfyTopic}";
+  };
 in
 {
   imports = [ ./mounts.nix ];
@@ -53,11 +59,7 @@ in
       # `tailscale up` and persists in /var/lib/tailscale.
     };
 
-    systemd.services = import ../notify.nix {
-      inherit pkgs lib;
-      inherit (cfg) notifyOnFailure;
-      hostName = config.networking.hostName;
-      endpoint = "https://${site.ntfySubdomain}.${cfg.baseDomain}/${cfg.ntfyTopic}";
-    };
+    inherit (notify) assertions;
+    inherit (notify) systemd;
   };
 }
