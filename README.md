@@ -22,14 +22,17 @@ sudo nixos-rebuild switch --rollback             # undo
 
 ## Structure
 
-- `hosts/wheezertbts/` — server config + agenix secrets
-- `hosts/frame-automata/` — desktop config; holds the `admin` key that edits
-  those secrets, so it is the recovery path if the server host key rotates
+- `hosts/wheezertbts/` — server config + its agenix secrets
+- `hosts/frame-automata/` — desktop config + its own agenix secrets; also holds
+  the `admin` key that edits *both* sets, so it is the recovery path if either
+  host key rotates
 - `modules/common/` — host-agnostic base (locale, nix settings, ssh, gpu)
 - `modules/workstation/` — interactive base: Plasma, audio, gaming, nix gc
 - `modules/homelab-client/` — the *using* side: tailnet, ntfy alerts, mounts
 - `modules/notify.nix` — ntfy failure alerts, shared by server and clients
 - `site.nix` — facts both sides need (domain, LAN IP, topic, timezone)
+- `keys.nix` — the estate's public keys: the `admin` key and one host key each.
+  A plain attrset at the root because the agenix CLI reads it outside the flake
 - `modules/homelab/` — `homelab.*` options and service modules
   (`homelab.services.<name>`); services register their reverse-proxy vhost
   in `homelab.nginx.internal`, whose optional `dashboard` field doubles as
@@ -113,15 +116,13 @@ expire in 24h. Mint one on the server (`headscale preauthkeys create`), then:
 sudo tailscale up --login-server https://wheezertbts.duckdns.org --auth-key <key> --accept-routes
 ```
 
-**4. The Samba login.** Not agenix: this host holds the `admin` key, not a host
-key in `secrets.nix`, so it cannot decrypt. Enroll its
-`/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix` after first boot to fix that
-properly. Until then, set the password on the server with
-`sudo smbpasswd -a wheezertbts`, then:
+**4. The Samba login.** Set the password on the server with
+`sudo smbpasswd -a wheezertbts`, then encrypt it for this host. The desktop's
+host key is in `keys.nix`, so it decrypts the secret itself at activation:
 
 ```sh
-sudo install -m 0600 -D /dev/null /etc/samba/credentials-homelab
-sudo nano /etc/samba/credentials-homelab
+cd hosts/frame-automata/secrets
+agenix -e samba-client.age
 ```
 
 with exactly these two lines — an editor rather than a heredoc, which
@@ -132,5 +133,11 @@ username=wheezertbts
 password=<the smbpasswd password>
 ```
 
-Shares mount on demand under `/mnt/homelab/`; a missing credentials file shows
-up as a mount error on first access, not at build time.
+Commit the resulting `.age` file, then rebuild. Shares mount on demand under
+`/mnt/homelab/`; a secret that is missing or cannot be decrypted shows up as a
+mount error on first access, not at build time.
+
+If this host is ever reinstalled its host key changes, so the secret becomes
+undecryptable: enroll the new `/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix`
+and rekey with `agenix -r` from that directory. The `admin` key is what makes
+that recoverable.

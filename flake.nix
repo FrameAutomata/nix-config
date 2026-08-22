@@ -75,13 +75,14 @@
           ];
         };
 
-        # No agenix.nixosModules.default: this host declares no age.secrets. It
-        # is the *editor* of the server's secrets (keys.nix `admin`) — the
-        # CLI's job, not the activation module's.
+        # Carries both agenix roles: it decrypts its own secrets at activation
+        # (samba-client.age, via the host key in keys.nix) and it holds the
+        # `admin` key that edits every secret, including the server's.
         frame-automata = nixpkgs-desktop.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
             ./hosts/frame-automata
+            agenix.nixosModules.default
             shared
             # The module, not just the overlay: Cowork's micro-VM needs OVMF at
             # FHS paths, virtiofsd, vhost_vsock and kvm group membership, which a

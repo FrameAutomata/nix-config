@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
   site = import ../../site.nix;
@@ -43,6 +43,12 @@ in
   # hosts/wheezertbts pins the same name for the same reason.
   networking.extraHosts = "${site.lanIP} ${site.baseDomain}";
 
+  # Decrypted at activation with this host's SSH host key, which is agenix's
+  # default identity and is enrolled in keys.nix. The CIFS shares are
+  # x-systemd.automount, so they mount on first access rather than at boot and
+  # cannot race this.
+  age.secrets.samba-client.file = ./secrets/samba-client.age;
+
   homelabClient = {
     enable = true;
     notifyOnFailure = [ "nixos-upgrade" ];
@@ -56,10 +62,9 @@ in
         "shared"
         "wheezertbts"
       ];
-      # Hand-created, not agenix: this host has no host key in secrets.nix, so
-      # it cannot decrypt. Enroll its /etc/ssh/ssh_host_ed25519_key.pub in
-      # keys.nix after first boot to fix that properly (see README).
-      credentialsFile = "/etc/samba/credentials-homelab";
+      # A runtime path, not a path literal: the option is typed `str` precisely
+      # so the plaintext can never be copied into the world-readable store.
+      credentialsFile = config.age.secrets.samba-client.path;
     };
   };
 

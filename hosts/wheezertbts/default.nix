@@ -150,7 +150,7 @@ in
     description = "Wheezer the Band the Server";
     # video/render = GPU access for this host's NVIDIA card (modules/common/nvidia.nix)
     extraGroups = [ "networkmanager" "wheel" "video" "render" ];
-    openssh.authorizedKeys.keys = [ (import ./keys.nix).admin ];
+    openssh.authorizedKeys.keys = [ (import ../../keys.nix).admin ];
   };
 
   # This-host tooling, not base infrastructure (modules/common stays lean)

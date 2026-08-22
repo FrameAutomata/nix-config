@@ -14,15 +14,19 @@ it) and `frame-automata` (Thomas's desktop, admin workstation).
 - Safe try: sudo nixos-rebuild test --flake .#wheezertbts
 - Rollback: sudo nixos-rebuild switch --rollback
 - Secret edit (run from the secrets dir — the CLI resolves rules relative to cwd):
-  cd hosts/wheezertbts/secrets
+  cd hosts/wheezertbts/secrets      # server secrets
+  cd hosts/frame-automata/secrets   # desktop secrets (samba-client.age)
   on the server (FILE must come right after -e, and sudo may drop $EDITOR):
     sudo EDITOR=nano agenix -e <name>.age -i /etc/ssh/ssh_host_ed25519_key
   on the desktop (admin key at ~/.ssh/id_ed25519): agenix -e <name>.age
   Keep the DUCKDNS_TOKEN=... env format when editing duckdns-token.age.
 
 ## Map
-- hosts/wheezertbts/ — server config + secrets
-- hosts/frame-automata/ — desktop; modules/workstation + modules/homelab-client
+- hosts/wheezertbts/ — server config + its secrets
+- hosts/frame-automata/ — desktop; modules/workstation + modules/homelab-client;
+  has its own secrets/ dir. keys.nix (repo root) holds admin + one key per host;
+  each host's secrets name only admin + that host, so neither can read the
+  other's — widening them is the mistake to avoid
 - The desktop has its OWN nixpkgs-desktop input: never `nix flake update` bare,
   it would move both hosts. Update one input by name.
 - modules/homelab/ — options + service modules (homelab.services.<name>)
