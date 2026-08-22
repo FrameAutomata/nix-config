@@ -76,6 +76,26 @@ in
     cowork.kvmUsers = [ "frame-automata" ];
   };
 
+  # For claude-desktop, NOT for the claude-code in systemPackages. The app
+  # downloads its own claude-code at runtime into
+  # ~/.config/Claude/claude-code/<version>/ and execs it; that binary is a
+  # generic-linux build whose PT_INTERP is /lib64/ld-linux-x86-64.so.2, so it
+  # hits NixOS's stub-ld and dies with 127 ("cannot run dynamically linked
+  # executable"). The two claude-codes are independent — the overlay's is
+  # patchelf'd and fine, and it is a different version besides, so bumping it
+  # fixes nothing here.
+  #
+  # nix-ld takes over environment.ldso (i.e. that same /lib64 path) and points
+  # it at a real loader, which fixes every future download too. Patching the
+  # binary in place would not: the download dir carries a .payload sha256 that
+  # matches it byte-for-byte plus a second unexplained digest in .verified, and
+  # the app re-downloads on each claude-code release regardless.
+  #
+  # No `libraries` here on purpose — the module's own default set (zlib, curl,
+  # openssl, stdenv.cc.cc, ...) is assigned under config, so additions merge
+  # with it rather than replacing it, and that set already covers this binary.
+  programs.nix-ld.enable = true;
+
   # Weekly update from whatever is committed, so deploying is pushing.
   # upgrade = false is required, not cosmetic: --upgrade is added whenever
   # `channel` is null, and this host has no channels to refresh.
