@@ -57,6 +57,10 @@
     brave
     # chat
     discord
+    # productivity
+    libreoffice-qt
+    hunspell
+    hyphenDicts.en_US
     # dev + homelab admin
     gh
     claude-code
