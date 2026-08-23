@@ -13,6 +13,7 @@
     ./sonarr.nix
     ./radarr.nix
     ./lidarr.nix
+    ./aurral.nix
     ./jellyseerr.nix
     ./vaultwarden.nix
     ./navidrome.nix
