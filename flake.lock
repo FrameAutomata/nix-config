@@ -47,7 +47,7 @@
     "claude-desktop": {
       "inputs": {
         "nixpkgs": [
-          "nixpkgs-desktop"
+          "nixpkgs-workstation"
         ]
       },
       "locked": {
@@ -98,7 +98,7 @@
         "type": "github"
       }
     },
-    "nixpkgs-desktop": {
+    "nixpkgs-workstation": {
       "locked": {
         "lastModified": 1787204541,
         "narHash": "sha256-OURZPknrTjQrlNyxPdqzyqmU/81Wes1CUP/Ft1Rv/YI=",
@@ -120,7 +120,7 @@
         "claude-code": "claude-code",
         "claude-desktop": "claude-desktop",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-desktop": "nixpkgs-desktop"
+        "nixpkgs-workstation": "nixpkgs-workstation"
       }
     },
     "systems": {

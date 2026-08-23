@@ -1,5 +1,5 @@
 {
-  description = "NixOS configs — wheezertbts (homelab server), frame-automata (desktop)";
+  description = "NixOS configs — wheezertbts (homelab server), frame-automata (desktop), frame-automobile (laptop)";
 
   inputs = {
     # The server's nixpkgs. Was pinned to f197f8e0c66a from 2026-07-25 because
@@ -10,10 +10,13 @@
     # Update just it with `nix flake update nixpkgs`.
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
 
-    # The desktop's own nixpkgs. Same branch, separate input so a server-side
-    # pin never gates a workstation's kernel or Plasma, and the two can move on
-    # their own cadence. Update just it with `nix flake update nixpkgs-desktop`.
-    nixpkgs-desktop.url = "github:nixos/nixpkgs/nixos-26.05";
+    # The workstations' nixpkgs. Same branch, separate input so a server-side
+    # pin never gates a workstation's kernel or Plasma — that split is about
+    # server vs workstation, not desktop vs laptop, so both workstations share
+    # this one input. They run the same Plasma/gaming/Claude stack, and moving
+    # them together keeps a bad revision from being true on one and false on
+    # the other. Update just it with `nix flake update nixpkgs-workstation`.
+    nixpkgs-workstation.url = "github:nixos/nixpkgs/nixos-26.05";
 
     # Both of these expose `overlays.default` as `final.callPackage ./package.nix`,
     # so they build against OUR nixpkgs and their own nixpkgs input is dead
@@ -27,7 +30,7 @@
     };
     claude-desktop = {
       url = "github:nmcbride/claude-desktop-nix";
-      inputs.nixpkgs.follows = "nixpkgs-desktop"; # desktop-only consumer
+      inputs.nixpkgs.follows = "nixpkgs-workstation"; # workstations only
     };
 
     agenix = {
@@ -41,18 +44,18 @@
   outputs =
     {
       nixpkgs,
-      nixpkgs-desktop,
+      nixpkgs-workstation,
       agenix,
       claude-code,
       claude-desktop,
       ...
     }:
     let
-      # Applied to both hosts. agenix rides the overlay rather than
+      # Applied to every host. agenix rides the overlay rather than
       # agenix.packages: the latter is built from the `nixpkgs` input, which
-      # would drag the server's pinned closure (a second glibc, a second nix)
-      # onto the desktop. The overlay builds it against each host's own pkgs;
-      # the agenix version is fixed by the flake input either way.
+      # would drag the server's closure (a second glibc, a second nix) onto a
+      # workstation. The overlay builds it against each host's own pkgs; the
+      # agenix version is fixed by the flake input either way.
       shared =
         { pkgs, ... }:
         {
@@ -63,6 +66,16 @@
           ];
           environment.systemPackages = [ pkgs.agenix ];
         };
+
+      # Both workstations run Claude Desktop. The module, not just the overlay:
+      # Cowork's micro-VM needs OVMF at FHS paths, virtiofsd, vhost_vsock and
+      # kvm group membership, which a package-only install skips. Each host
+      # overrides `package =` so this pulls no closure from claude-desktop's own
+      # nixpkgs.
+      claudeDesktop = [
+        claude-desktop.nixosModules.default
+        { nixpkgs.overlays = [ claude-desktop.overlays.default ]; }
+      ];
     in
     {
       nixosConfigurations = {
@@ -78,19 +91,27 @@
         # Carries both agenix roles: it decrypts its own secrets at activation
         # (samba-client.age, via the host key in keys.nix) and it holds the
         # `admin` key that edits every secret, including the server's.
-        frame-automata = nixpkgs-desktop.lib.nixosSystem {
+        frame-automata = nixpkgs-workstation.lib.nixosSystem {
           system = "x86_64-linux";
           modules = [
             ./hosts/frame-automata
             agenix.nixosModules.default
             shared
-            # The module, not just the overlay: Cowork's micro-VM needs OVMF at
-            # FHS paths, virtiofsd, vhost_vsock and kvm group membership, which a
-            # package-only install skips. package = is overridden in the host so
-            # this pulls no closure from claude-desktop's own nixpkgs.
-            claude-desktop.nixosModules.default
-            { nixpkgs.overlays = [ claude-desktop.overlays.default ]; }
-          ];
+          ]
+          ++ claudeDesktop;
+        };
+
+        # No agenix.nixosModules.default: this host declares no age.secrets, and
+        # deliberately holds no key in keys.nix — its disk is unencrypted, so a
+        # host key there would be a decryption capability anyone with the laptop
+        # could use. It gets the agenix CLI from `shared` and nothing else.
+        frame-automobile = nixpkgs-workstation.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/frame-automobile
+            shared
+          ]
+          ++ claudeDesktop;
         };
       };
     };
