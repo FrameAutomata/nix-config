@@ -37,10 +37,40 @@
   };
   programs.gamemode.enable = true;
 
+  # The shared workstation app set. Both hosts run the same Plasma/gaming/Claude
+  # stack, so this lives here rather than being duplicated in each host tree — a
+  # host's own systemPackages carries only what is true of that machine alone.
+  # claude-code and headroom come from the overlays the flake's `shared` module
+  # applies, so this module is only complete when composed with it.
   environment.systemPackages = with pkgs; [
+    # hardware / gaming
     mangohud
     pciutils
     usbutils
+    # editors / terminal
+    neovim
+    zed-editor
+    ghostty
+    kdePackages.kate
+    # browsers
+    vivaldi
+    brave
+    # chat
+    discord
+    # productivity
+    libreoffice-qt
+    hunspell
+    hunspellDicts.en_US
+    hyphenDicts.en_US
+    # dev + homelab admin
+    gh
+    # Zed's Nix extension declares nil and nixd but downloads neither — it
+    # only `which`es them, so an uninstalled server is silently no server.
+    # nixd over nil for the NixOS option completion this repo is made of;
+    # ~/.config/zed/settings.json points it at the flake and disables nil.
+    nixd
+    claude-code
+    headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
 
   # Nothing reclaims the store otherwise, and autoUpgrade adds a generation a

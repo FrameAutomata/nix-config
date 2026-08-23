@@ -77,7 +77,8 @@ in
   };
 
   # For claude-desktop's runtime-downloaded claude-code, not the patchelf'd one
-  # in systemPackages — hosts/frame-automata/default.nix carries the full why.
+  # modules/workstation installs — hosts/frame-automata/default.nix carries the
+  # full why.
   programs.nix-ld.enable = true;
 
   # Weekly update from whatever is committed, so deploying is pushing.
@@ -95,21 +96,8 @@ in
     allowReboot = false;
   };
 
+  # Laptop-only; the shared workstation app set is in modules/workstation.
   environment.systemPackages = with pkgs; [
-    # editors / terminal
-    neovim
-    zed-editor
-    ghostty
-    kdePackages.kate
-    # browsers
-    vivaldi
-    brave
-    # chat
-    discord
-    # dev + homelab admin
-    gh
-    claude-code
-    headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
     keyd # the CLI (`keyd monitor`); services.keyd installs only the daemon
   ];
 
