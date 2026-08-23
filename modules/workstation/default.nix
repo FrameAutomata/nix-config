@@ -73,6 +73,23 @@
     headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
 
+  # direnv + nix-direnv, so a checkout carrying an .envrc drops you into its
+  # dev shell on cd rather than everyone remembering to type `nix develop`.
+  #
+  # nix-direnv (on by default under this option) is the reason this is
+  # system-level rather than a per-project shell script: it caches each dev
+  # shell's closure under that project's .direnv/ and registers it as a GC
+  # root, so the nix.gc below cannot collect a toolchain a checkout still
+  # depends on. That failure is worth avoiding specifically — a pip venv built
+  # against a store python keeps a bare symlink into /nix/store, so a gc that
+  # takes the interpreter away surfaces later as an unrelated-looking missing
+  # .so rather than as anything pointing at the collection.
+  #
+  # Opt-in per project regardless: direnv ignores an .envrc until it is
+  # `direnv allow`ed. Needs a fresh login, since the shell hook is installed
+  # at session start.
+  programs.direnv.enable = true;
+
   # Nothing reclaims the store otherwise, and autoUpgrade adds a generation a
   # week. optimise hardlinks identical files between store paths.
   #
