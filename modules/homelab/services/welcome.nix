@@ -136,6 +136,14 @@ let
               Jellyfin account). No app needed — open it in your browser and
               add it to your home screen if you want an icon.</li>
         ''}
+        ${when services.aurral.enable ''
+          <li><a href="${url "music-requests"}">Music requests</a> — ask for
+              an artist or album and it downloads automatically. Separate
+              login from the one above: the admin makes you an Aurral account
+              (Settings → Users), and it is the only place you request music
+              — ${when services.jellyseerr.enable "the requests page above is movies and shows only, and "}the
+              music player itself has no request button.</li>
+        ''}
         ${when services.immich.enable ''
           <li><a href="${url "photos"}">Photos</a> — back up your phone's
               camera roll and browse it from anywhere. Server

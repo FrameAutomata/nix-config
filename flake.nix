@@ -62,7 +62,10 @@
           nixpkgs.overlays = [
             claude-code.overlays.default
             agenix.overlays.default
-            (final: _prev: { headroom = final.callPackage ./pkgs/headroom { }; })
+            (final: _prev: {
+              headroom = final.callPackage ./pkgs/headroom { };
+              aurral = final.callPackage ./pkgs/aurral { };
+            })
           ];
           environment.systemPackages = [ pkgs.agenix ];
         };

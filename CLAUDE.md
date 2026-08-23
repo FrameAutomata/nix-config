@@ -84,6 +84,22 @@ prints a credential sheet. Re-runnable: existing accounts are left
 unchanged. Media-app accounts (Jellyfin/Navidrome/ABS) stay manual until
 their first-run wizards produce admin API tokens.
 
+Music requests: Aurral at music-requests. (pkgs/aurral + services/aurral.nix,
+port 3005 — 3001 is uptime-kuma). Seerr will NOT do music: both upstream
+Lidarr PRs (#1226, #1238) were closed unmerged. Aurral has no approval
+queue by design — per-user permissions are capability grants, so a member
+with "add albums" writes straight to Lidarr, matching the auto-approve
+policy Seerr already runs for video. PENDING MANUAL: its first-run wizard
+(/api/onboarding/complete) REFUSES to finish without a reachable Lidarr URL
++ API key, so have those before first login; member accounts are then made
+in Settings > Users (own login, not Jellyfin SSO). Packaging notes worth
+keeping: sharp's npm prebuilt segfaults on dlopen even fully patchelfed, so
+it is built from source against nixpkgs vips (SHARP_FORCE_GLOBAL_LIBVIPS);
+node must be nodejs_22 (engine-strict + engines 22.23.x); the musl prebuilds
+npm delivers must be deleted or autoPatchelfHook fails the build. Aurral
+never writes the music library — only Lidarr does — so it needs no media
+group; the optional yt-dlp/slskd download features would change that.
+
 Phase 6 complete: Vaultwarden (vault., signups OPEN until roommates
 register — then flip homelab.services.vaultwarden.allowSignups off),
 Navidrome (music., library /mnt/media/Music — there is no Media/ parent
