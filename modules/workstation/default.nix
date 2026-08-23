@@ -64,6 +64,11 @@
     hyphenDicts.en_US
     # dev + homelab admin
     gh
+    # Zed's Nix extension declares nil and nixd but downloads neither — it
+    # only `which`es them, so an uninstalled server is silently no server.
+    # nixd over nil for the NixOS option completion this repo is made of;
+    # ~/.config/zed/settings.json points it at the flake and disables nil.
+    nixd
     claude-code
     headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
