@@ -36,6 +36,11 @@ it), `frame-automata` (Thomas's desktop, admin workstation) and
 - Both workstations share the nixpkgs-workstation input; the server has its own
   nixpkgs. Never `nix flake update` bare — it moves everything. Update by name.
 - modules/homelab/ — options + service modules (homelab.services.<name>)
+- Packages: modules/common = all three hosts; modules/workstation = both
+  workstations (the shared app set lives here — edit once, not twice); a host's
+  own systemPackages is for that machine alone (laptop: keyd; power.nix:
+  powertop/turbostat). Not in nixpkgs -> pkgs/<name>/ + an overlay line in the
+  flake's `shared` module.
 - site.nix + modules/notify.nix — shared by all three hosts; edit once, not thrice
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
