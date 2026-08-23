@@ -1,7 +1,7 @@
 # nix-config
 
-NixOS flake for the `wheezertbts` household homelab server and the
-`frame-automata` desktop that administers it.
+NixOS flake for the `wheezertbts` household homelab server, the `frame-automata`
+desktop that administers it, and the `frame-automobile` laptop.
 
 **Status:** Phase 7 — safety net live: hourly btrbk snapshots of the media
 pool, nightly restic backups of service state to a local repo on the
@@ -17,6 +17,7 @@ sudo nixos-rebuild build --flake .#wheezertbts   # dry build
 sudo nixos-rebuild test --flake .#wheezertbts    # apply without making it the boot default
 sudo nixos-rebuild switch --flake .#wheezertbts
 sudo nixos-rebuild switch --flake .#frame-automata   # the desktop
+sudo nixos-rebuild switch --flake .#frame-automobile # the laptop
 sudo nixos-rebuild switch --rollback             # undo
 ```
 
@@ -26,7 +27,9 @@ sudo nixos-rebuild switch --rollback             # undo
 - `hosts/frame-automata/` — desktop config + its own agenix secrets; also holds
   the `admin` key that edits *both* sets, so it is the recovery path if either
   host key rotates
-- `modules/common/` — host-agnostic base (locale, nix settings, ssh, gpu)
+- `hosts/frame-automobile/` — laptop config; no secrets and no key in `keys.nix`
+- `modules/common/` — host-agnostic base (locale, nix settings, ssh, gpu;
+  `amdgpu.nix` and `intel-gpu.nix` are opt-in per host)
 - `modules/workstation/` — interactive base: Plasma, audio, gaming, nix gc
 - `modules/homelab-client/` — the *using* side: tailnet, ntfy alerts, mounts
 - `modules/notify.nix` — ntfy failure alerts, shared by server and clients
@@ -77,12 +80,14 @@ option layout) are adapted from
 
 ## Desktop (`frame-automata`)
 
-Separate `nixpkgs-desktop` input: the server's `nixpkgs` pin exists for server
-reasons and must not gate a workstation. Update one without the other:
+Builds from the `nixpkgs-workstation` input, which it shares with the laptop: a
+server-side pin exists for server reasons and must not gate a workstation. The
+split is server-vs-workstation, not desktop-vs-laptop, so one command moves both
+workstations and they never drift apart.
 
 ```sh
-nix flake update nixpkgs-desktop    # desktop only
-nix flake update nixpkgs            # server only
+nix flake update nixpkgs-workstation   # both workstations
+nix flake update nixpkgs               # server only
 ```
 
 It auto-upgrades weekly from `github:FrameAutomata/nix-config#frame-automata`,
@@ -141,3 +146,68 @@ If this host is ever reinstalled its host key changes, so the secret becomes
 undecryptable: enroll the new `/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix`
 and rekey with `agenix -r` from that directory. The `admin` key is what makes
 that recoverable.
+
+## Laptop (`frame-automobile`)
+
+Acer Aspire A14-52MT — Core Ultra 5 226V "Lunar Lake", BE200 Wi-Fi 7. Same
+module set as the desktop (`modules/workstation` + `modules/homelab-client`)
+and the same `nixpkgs-workstation` input, so both workstations move together.
+Two pieces are its own:
+
+- `hosts/frame-automobile/power.nix` — battery and idle-power tuning, every
+  value measured on this chassis: power-profiles-daemon kept over TLP so
+  Plasma's profile switcher keeps working, an ASPM policy that matches what
+  firmware shipped, runtime PM for the devices that came with it off, and Wi-Fi
+  and HDA power saving. It also gates `nixos-upgrade`, `nix-gc` and
+  `nix-optimise` on AC, so unattended maintenance never spends battery.
+- `modules/common/intel-gpu.nix` — the Intel sibling of `amdgpu.nix`; adds the
+  iHD VA-API driver so video decode happens on the GPU rather than the CPU.
+
+It auto-upgrades weekly from `github:FrameAutomata/nix-config#frame-automobile`,
+which resolves against the **default branch** — the config has to be merged for
+the weekly upgrade to find it.
+
+### No secrets on this host, deliberately
+
+It holds no `secrets/` dir and no key in `keys.nix`, so it mounts no Samba
+shares. The disk is unencrypted: a host key on it would be a standing
+decryption capability for anyone who picks the laptop up, and `keys.nix` is the
+one place where widening access is the mistake that is hard to walk back.
+
+To change that, encrypt the disk first, then enroll
+`/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix`, add
+`hosts/frame-automobile/secrets/` with its own `secrets.nix`, and set
+`homelabClient.mounts` the way `hosts/frame-automata/default.nix` does.
+
+### It came off channels
+
+This host ran a channel-based `/etc/nixos` config until 2026-08-23. Two
+consequences worth remembering:
+
+- `nix-channel --update` no longer affects the system. Upgrades come from the
+  committed `flake.lock`, and a release hop is a change to the input URL.
+- A bare `sudo nixos-rebuild switch` would rebuild the **old** channel config
+  from `/etc/nixos/configuration.nix`. Always pass `--flake`.
+
+### First boot — none of this is declarative
+
+**1. A password.** The account sets none of
+`hashedPassword`/`hashedPasswordFile`/`initialPassword` (a public repo is no
+place for the first two), so a fresh install leaves it locked and SDDM rejects
+every password. From a root TTY:
+
+```sh
+passwd frame-automobile
+```
+
+**2. Join the tailnet.** There is deliberately no `authKeyFile` — pre-auth keys
+expire in 24h. Mint one on the server (`headscale preauthkeys create`), then:
+
+```sh
+sudo tailscale up --login-server https://wheezertbts.duckdns.org --auth-key <key> --accept-routes
+```
+
+**3. A new hardware scan.** `hosts/frame-automobile/hardware-configuration.nix`
+is a committed scan of this machine. Regenerate it on a reinstall, and note that
+a scan taken with no USB storage attached drops `usb_storage`/`sd_mod` — which
+is why `default.nix` adds them back.

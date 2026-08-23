@@ -1,6 +1,7 @@
-# nix-config — wheezertbts homelab + frame-automata desktop
-NixOS 26.05 flake. Two hosts: `wheezertbts` (live server; roommates depend on
-it) and `frame-automata` (Thomas's desktop, admin workstation).
+# nix-config — wheezertbts homelab + frame-automata desktop + frame-automobile laptop
+NixOS 26.05 flake. Three hosts: `wheezertbts` (live server; roommates depend on
+it), `frame-automata` (Thomas's desktop, admin workstation) and
+`frame-automobile` (Thomas's laptop, no secrets on it).
 
 ## Hard rules
 - Never disable openssh / remove authorized keys / close port 22.
@@ -10,7 +11,8 @@ it) and `frame-automata` (Thomas's desktop, admin workstation).
 - Don't restructure /mnt/media data without explicit approval.
 
 ## Commands
-- Rebuild: sudo nixos-rebuild switch --flake .#wheezertbts (or .#frame-automata)
+- Rebuild: sudo nixos-rebuild switch --flake .#wheezertbts
+  (or .#frame-automata, .#frame-automobile)
 - Safe try: sudo nixos-rebuild test --flake .#wheezertbts
 - Rollback: sudo nixos-rebuild switch --rollback
 - Secret edit (run from the secrets dir — the CLI resolves rules relative to cwd):
@@ -27,10 +29,14 @@ it) and `frame-automata` (Thomas's desktop, admin workstation).
   has its own secrets/ dir. keys.nix (repo root) holds admin + one key per host;
   each host's secrets name only admin + that host, so neither can read the
   other's — widening them is the mistake to avoid
-- The desktop has its OWN nixpkgs-desktop input: never `nix flake update` bare,
-  it would move both hosts. Update one input by name.
+- hosts/frame-automobile/ — laptop; same module set as the desktop plus
+  modules/common/intel-gpu.nix and a host-local power.nix. NO secrets dir and no
+  key in keys.nix, deliberately: its disk is unencrypted, so a host key there
+  would be a decryption capability for anyone holding the laptop
+- Both workstations share the nixpkgs-workstation input; the server has its own
+  nixpkgs. Never `nix flake update` bare — it moves everything. Update by name.
 - modules/homelab/ — options + service modules (homelab.services.<name>)
-- site.nix + modules/notify.nix — shared by both hosts; edit once, not twice
+- site.nix + modules/notify.nix — shared by all three hosts; edit once, not thrice
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
