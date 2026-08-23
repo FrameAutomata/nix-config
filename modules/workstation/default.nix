@@ -60,6 +60,7 @@
     # productivity
     libreoffice-qt
     hunspell
+    hunspellDicts.en_US
     hyphenDicts.en_US
     # dev + homelab admin
     gh
