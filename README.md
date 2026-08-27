@@ -179,6 +179,44 @@ To change that, encrypt the disk first, then enroll
 `hosts/frame-automobile/secrets/` with its own `secrets.nix`, and set
 `homelabClient.mounts` the way `hosts/frame-automata/default.nix` does.
 
+### Swap and hibernation
+
+The unencrypted disk shapes swap too, and there the tradeoff went the other
+way. The machine has 16 GiB of RAM and shipped with none, and there is no free
+partition space (`nvme0n1` is `/boot` plus one full-disk ext4 root, and ext4
+cannot be shrunk while mounted), so `hosts/frame-automobile/default.nix` adds
+a 16 GiB **swapfile** at `/var/lib/swapfile`. On ext4 that is not a
+compromise: the kernel resolves the file's extents once at `swapon` and then
+writes straight to the block device, so a partition would buy nothing but a
+risky offline repartition.
+
+`randomEncryption` was the first cut — a fresh key per boot, so nothing paged
+out stayed readable on a disk that travels — but it is mutually exclusive with
+hibernation, and hibernation won. This chassis offers only `s2idle`, no S3
+(`cat /sys/power/mem_sleep`), so a closed lid drains overnight in a way
+hibernate avoids. **The accepted cost is that swap, and the full RAM image
+hibernation writes, sit in plaintext on an unencrypted disk.** Encrypting the
+disk is the change that would get both; until then this is the weakest point on
+this host.
+
+Hibernation needs two things. `boot.resumeDevice` names the filesystem holding
+the swapfile and is read from `fileSystems."/"`, so a fresh hardware scan
+carries it. The second is `resume_offset`, the block offset of the file itself,
+which cannot be known until the file exists — it lives in the
+`swapfileResumeOffset` binding at the top of the host config and stays `null`
+until measured, with the kernel param omitted while it is. After the first
+switch creates the swapfile:
+
+```
+sudo filefrag -v /var/lib/swapfile |
+  awk '$1=="0:" {print substr($4, 1, length($4) - 2); exit}'
+```
+
+ext4 blocks and kernel pages are both 4096 here, so that number goes in
+verbatim. Re-measure if the file is ever recreated (changing `size` does that);
+a stale offset corrupts nothing, but resume finds no valid image and boots
+fresh, silently losing the session.
+
 ### It came off channels
 
 This host ran a channel-based `/etc/nixos` config until 2026-08-23. Two
