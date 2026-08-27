@@ -1,7 +1,31 @@
-{ pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   site = import ../../site.nix;
+
+  # Physical block offset of the first extent of /var/lib/swapfile. The kernel
+  # needs it to find the hibernation image on resume: `resume=` names the
+  # filesystem, this names the file inside it. Measured on 2026-08-27, on the
+  # switch that first created the file:
+  #
+  #   sudo filefrag -v /var/lib/swapfile |
+  #     awk '$1=="0:" {print substr($4, 1, length($4) - 2); exit}'
+  #
+  # ext4 blocks and kernel pages are both 4096 on this host, so the number goes
+  # in verbatim. null is a legal value here and simply drops the kernel param
+  # -- the right state whenever the file's location is not known.
+  #
+  # RE-MEASURE if the swapfile is ever recreated. Changing `size` does that, so
+  # does restoring / from a backup, and so does deleting the file to reclaim
+  # the space. A stale offset corrupts nothing, but it fails in the quietest
+  # possible way: resume finds no valid image signature and boots fresh,
+  # silently losing the session.
+  swapfileResumeOffset = 226111488;
 in
 
 {
@@ -27,6 +51,38 @@ in
     "usb_storage"
     "sd_mod"
   ];
+
+  # 16 GiB of swap. There is nowhere else to put it: nvme0n1 is /boot plus one
+  # full-disk ext4 root, with no free space to carve a partition from, so it is
+  # a file on root. swapDevices is a merging list option, so this adds to the
+  # empty one in the generated hardware-configuration.nix instead of clashing
+  # with it -- same reasoning as the initrd list above. `size` is MiB, and the
+  # mkswap unit only acts on it when the file is absent or a different size: it
+  # dd's the 16 GiB once and leaves it alone on every later boot.
+  #
+  # Deliberately NOT randomEncryption, which was the first cut here. A per-boot
+  # key would keep paged-out memory unreadable on a disk that is unencrypted
+  # (the same fact that keeps this host out of keys.nix), but it is mutually
+  # exclusive with hibernation -- the image would be sealed under a key that is
+  # gone by the time you resume. This chassis only offers s2idle, no S3, so
+  # suspend drains meaningfully overnight and hibernate is worth more than
+  # swap secrecy here. The accepted cost: swap, and a full RAM image, land in
+  # plaintext on the disk. Encrypting the disk is the fix that gets both.
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 16 * 1024;
+    }
+  ];
+
+  # resumeDevice is the filesystem that HOLDS the swapfile, not the swapfile --
+  # boot.initrd.systemd is on here, and it turns this into the `resume=` kernel
+  # param; swapfileResumeOffset above locates the file within it. Taken from
+  # fileSystems rather than pasted, so a re-run of the hardware scan carries it.
+  boot.resumeDevice = config.fileSystems."/".device;
+  boot.kernelParams = lib.optional (
+    swapfileResumeOffset != null
+  ) "resume_offset=${toString swapfileResumeOffset}";
 
   users.users.frame-automobile = {
     isNormalUser = true;

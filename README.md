@@ -179,6 +179,73 @@ To change that, encrypt the disk first, then enroll
 `hosts/frame-automobile/secrets/` with its own `secrets.nix`, and set
 `homelabClient.mounts` the way `hosts/frame-automata/default.nix` does.
 
+### Swap and hibernation
+
+The unencrypted disk shapes swap too, and there the tradeoff went the other
+way. The machine has 16 GiB of RAM and shipped with none, and there is no free
+partition space (`nvme0n1` is `/boot` plus one full-disk ext4 root, and ext4
+cannot be shrunk while mounted), so `hosts/frame-automobile/default.nix` adds
+a 16 GiB **swapfile** at `/var/lib/swapfile`. On ext4 that is not a
+compromise: the kernel resolves the file's extents once at `swapon` and then
+writes straight to the block device, so a partition would buy nothing but a
+risky offline repartition.
+
+`randomEncryption` was the first cut — a fresh key per boot, so nothing paged
+out stayed readable on a disk that travels — but it is mutually exclusive with
+hibernation, and hibernation won. This chassis offers only `s2idle`, no S3
+(`cat /sys/power/mem_sleep`), so a closed lid drains overnight in a way
+hibernate avoids. **The accepted cost is that swap, and the full RAM image
+hibernation writes, sit in plaintext on an unencrypted disk.** Encrypting the
+disk is the change that would get both; until then this is the weakest point on
+this host.
+
+Hibernation needs two things. `boot.resumeDevice` names the filesystem holding
+the swapfile and is read from `fileSystems."/"`, so a fresh hardware scan
+carries it. The second is `resume_offset`, the block offset of the file itself,
+which cannot be known until the file exists. It lives in the
+`swapfileResumeOffset` binding at the top of the host config; `null` there is
+legal and simply drops the kernel param, which is the right state whenever the
+file's location is unknown. Re-measure after any switch that recreates the
+swapfile:
+
+```
+sudo filefrag -v /var/lib/swapfile |
+  awk '$1=="0:" {print substr($4, 1, length($4) - 2); exit}'
+```
+
+ext4 blocks and kernel pages are both 4096 here, so that number goes in
+verbatim. Re-measure if the file is ever recreated (changing `size` does that);
+a stale offset corrupts nothing, but resume finds no valid image and boots
+fresh, silently losing the session.
+
+Closing the lid is wired to suspend-then-hibernate in
+`hosts/frame-automobile/power.nix`: suspend first, then hibernate after
+`HibernateDelaySec=30min`, so a short close resumes from RAM and a long one
+settles at roughly zero draw. On external power it stays plain suspend.
+
+**One half of this is manual, and without it the lid does nothing new.**
+`services.logind.settings.Login.HandleLidSwitch` only reaches the lid when
+nothing holds logind's `handle-lid-switch` inhibitor — the SDDM login screen, a
+TTY. Inside a Plasma session PowerDevil takes that inhibitor as a *block* and
+owns the lid itself (`systemd-inhibit --list` shows it, as `KDE handles power
+events`). PowerDevil 6.6 does support the mode — it calls logind's
+`SuspendThenHibernate`, which reports `yes` on this host — but the setting is
+per-user Plasma state and this repo runs no home-manager, so it cannot be
+declared here:
+
+> System Settings → Power Management → **Sleep mode** → **"Standby, then
+> hibernate"**, leaving the lid-close action itself on "Sleep".
+
+Plasma 6.6 restructured this: the per-trigger dropdowns no longer each list
+suspend/hibernate/hybrid. There is now one **Sleep mode** selector defining what
+"Sleep" means, and the triggers just say "Sleep". The entry is called *Standby,
+then hibernate* — not "sleep" — which is easy to look straight past. It is
+`SleepMode` in `~/.config/powerdevilrc` once set, so the value can be read back
+and promoted to a system default in `/etc/xdg/` later if that is worth doing.
+
+`HibernateDelaySec` governs the gap whoever invokes the sleep, so the
+declarative half is still doing work once that is set.
+
 ### It came off channels
 
 This host ran a channel-based `/etc/nixos` config until 2026-08-23. Two
