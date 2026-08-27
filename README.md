@@ -202,10 +202,11 @@ this host.
 Hibernation needs two things. `boot.resumeDevice` names the filesystem holding
 the swapfile and is read from `fileSystems."/"`, so a fresh hardware scan
 carries it. The second is `resume_offset`, the block offset of the file itself,
-which cannot be known until the file exists — it lives in the
-`swapfileResumeOffset` binding at the top of the host config and stays `null`
-until measured, with the kernel param omitted while it is. After the first
-switch creates the swapfile:
+which cannot be known until the file exists. It lives in the
+`swapfileResumeOffset` binding at the top of the host config; `null` there is
+legal and simply drops the kernel param, which is the right state whenever the
+file's location is unknown. Re-measure after any switch that recreates the
+swapfile:
 
 ```
 sudo filefrag -v /var/lib/swapfile |

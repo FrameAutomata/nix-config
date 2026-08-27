@@ -10,19 +10,22 @@ let
 
   # Physical block offset of the first extent of /var/lib/swapfile. The kernel
   # needs it to find the hibernation image on resume: `resume=` names the
-  # filesystem, this names the file inside it. It cannot be known until the
-  # file exists, so it stays null until measured -- swap works either way, only
-  # hibernate depends on it, and the kernel param below is omitted while null.
-  # Measure it once the swapfile has been created by a switch:
+  # filesystem, this names the file inside it. Measured on 2026-08-27, on the
+  # switch that first created the file:
   #
   #   sudo filefrag -v /var/lib/swapfile |
   #     awk '$1=="0:" {print substr($4, 1, length($4) - 2); exit}'
   #
-  # ext4 blocks and kernel pages are both 4096 on this host, so that number
-  # goes in verbatim. Re-measure if the file is ever recreated -- changing
-  # `size` does that. A stale offset corrupts nothing: resume finds no valid
-  # image signature and boots fresh, silently losing the session.
-  swapfileResumeOffset = null;
+  # ext4 blocks and kernel pages are both 4096 on this host, so the number goes
+  # in verbatim. null is a legal value here and simply drops the kernel param
+  # -- the right state whenever the file's location is not known.
+  #
+  # RE-MEASURE if the swapfile is ever recreated. Changing `size` does that, so
+  # does restoring / from a backup, and so does deleting the file to reclaim
+  # the space. A stale offset corrupts nothing, but it fails in the quietest
+  # possible way: resume finds no valid image signature and boots fresh,
+  # silently losing the session.
+  swapfileResumeOffset = 226111488;
 in
 
 {
