@@ -16,6 +16,33 @@
   # Reacts before the firmware trip points, avoiding boost-then-throttle cycles.
   services.thermald.enable = true;
 
+  # Closing the lid suspends first, then hibernates after a delay. This is the
+  # payoff for the swapfile in default.nix: /sys/power/mem_sleep offers only
+  # s2idle on this chassis, no S3, so a closed lid keeps drawing enough to
+  # matter across a night. Waking on an RTC alarm to write the image turns the
+  # tail of a long close into ~zero draw, while a short close still resumes
+  # instantly from RAM.
+  #
+  # 30min is the tradeoff point: longer than a lid-close that is really a pause
+  # (meeting, lunch, walking between rooms), shorter than the stretch of an
+  # overnight close where s2idle is just burning charge for nothing.
+  systemd.sleep.settings.Sleep.HibernateDelaySec = "30min";
+
+  # This only reaches the lid when nothing holds logind's handle-lid-switch
+  # inhibitor -- the SDDM login screen, a TTY, a session that died. Inside
+  # Plasma it is dead config: PowerDevil takes that inhibitor as a *block* and
+  # owns the lid itself (`systemd-inhibit --list` shows it). The matching
+  # setting there is per-user Plasma state, and this repo runs no home-manager,
+  # so it stays MANUAL -- see the README. HibernateDelaySec above governs the
+  # suspend-to-hibernate gap either way, whoever invokes it.
+  #
+  # External power stays on plain suspend: hibernating a plugged-in laptop
+  # spends the resume latency to save a charge that is not being drawn down.
+  services.logind.settings.Login = {
+    HandleLidSwitch = "suspend-then-hibernate";
+    HandleLidSwitchExternalPower = "suspend";
+  };
+
   # Firmware already had ASPM optimal; this only avoids regressing it. Measured
   # on the SSD link: "powersave" turns the L1.1/L1.2 substates OFF, and only
   # "powersupersave" reproduces firmware's L1.2+ state. Not pcie_aspm=force —

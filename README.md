@@ -218,6 +218,34 @@ verbatim. Re-measure if the file is ever recreated (changing `size` does that);
 a stale offset corrupts nothing, but resume finds no valid image and boots
 fresh, silently losing the session.
 
+Closing the lid is wired to suspend-then-hibernate in
+`hosts/frame-automobile/power.nix`: suspend first, then hibernate after
+`HibernateDelaySec=30min`, so a short close resumes from RAM and a long one
+settles at roughly zero draw. On external power it stays plain suspend.
+
+**One half of this is manual, and without it the lid does nothing new.**
+`services.logind.settings.Login.HandleLidSwitch` only reaches the lid when
+nothing holds logind's `handle-lid-switch` inhibitor — the SDDM login screen, a
+TTY. Inside a Plasma session PowerDevil takes that inhibitor as a *block* and
+owns the lid itself (`systemd-inhibit --list` shows it, as `KDE handles power
+events`). PowerDevil 6.6 does support the mode — it calls logind's
+`SuspendThenHibernate`, which reports `yes` on this host — but the setting is
+per-user Plasma state and this repo runs no home-manager, so it cannot be
+declared here:
+
+> System Settings → Power Management → **Sleep mode** → **"Standby, then
+> hibernate"**, leaving the lid-close action itself on "Sleep".
+
+Plasma 6.6 restructured this: the per-trigger dropdowns no longer each list
+suspend/hibernate/hybrid. There is now one **Sleep mode** selector defining what
+"Sleep" means, and the triggers just say "Sleep". The entry is called *Standby,
+then hibernate* — not "sleep" — which is easy to look straight past. It is
+`SleepMode` in `~/.config/powerdevilrc` once set, so the value can be read back
+and promoted to a system default in `/etc/xdg/` later if that is worth doing.
+
+`HibernateDelaySec` governs the gap whoever invokes the sleep, so the
+declarative half is still doing work once that is set.
+
 ### It came off channels
 
 This host ran a channel-based `/etc/nixos` config until 2026-08-23. Two
