@@ -83,9 +83,17 @@ in
       ntfy.enable = true;
       welcome.enable = true;
     };
-    # The admin is a member automatically; roommate handles get appended to
-    # household.members once agreed (plan §8).
-    household.enable = true;
+    # The admin is a member automatically; members holds only the roommates.
+    # Handles are agreed nicknames (this repo is public) and become unix
+    # account names, so they are lowercase — "Judao" is spelled judao here.
+    household = {
+      enable = true;
+      members = [
+        "judao"
+        "big_poppa"
+        "yorc"
+      ];
+    };
   };
 
   # Keep this host's own resolution on public upstreams: once the router
