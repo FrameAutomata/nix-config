@@ -68,6 +68,22 @@
         aurral = final.callPackage ./pkgs/aurral { };
       };
 
+      # Hosts whose hardware-configuration.nix is still the placeholder throw,
+      # so they cannot be evaluated at all — see hosts/<name>/hardware-
+      # configuration.nix for why that is a throw and not a stub.
+      #
+      # A named list, NOT an omission from `checks` below. An absence is
+      # invisible: nothing distinguishes "deliberately excluded because it
+      # cannot eval" from "someone forgot", and a fifth host added to
+      # nixosConfigurations would be silently ungated forever. Installing one
+      # of these is deleting one string here; CI derives its host list from
+      # what is left, so there is no second edit.
+      hostsPendingInstall = [ "wonudesktop" ];
+
+      hostChecks = nixpkgs.lib.mapAttrs' (
+        name: cfg: nixpkgs.lib.nameValuePair "host-${name}" cfg.config.system.build.toplevel
+      ) (removeAttrs self.nixosConfigurations hostsPendingInstall);
+
       # The single list the packages and checks outputs both select with.
       # attrNames does not force the values, so the dummy arguments are never
       # looked at. Deriving the names and then selecting from the real,
@@ -238,9 +254,9 @@
       # check" — reason 2 outlives reason 1. The steady state is what CI does
       # today: evaluate the host-* checks, build the rest.
       #
-      # host-* are the three installed machines. Add wonudesktop here when its
-      # hardware scan replaces the placeholder; CI derives its list from this
-      # attrset, so that is the only edit.
+      # host-* is derived from nixosConfigurations minus hostsPendingInstall,
+      # so a new host is gated the moment it is declared rather than when
+      # someone remembers to add it here.
       checks = forAllSystems (
         system:
         let
@@ -252,11 +268,8 @@
           };
         in
         self.packages.${system}
+        // hostChecks
         // {
-          host-wheezertbts = self.nixosConfigurations.wheezertbts.config.system.build.toplevel;
-          host-frame-automata = self.nixosConfigurations.frame-automata.config.system.build.toplevel;
-          host-frame-automobile = self.nixosConfigurations.frame-automobile.config.system.build.toplevel;
-
           # Keeps the tree nixfmt-clean.
           #
           # The fileset narrows the input to .nix files only. Depending on
