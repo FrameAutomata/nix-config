@@ -25,9 +25,10 @@ host NOT administered by the person using it, NOT yet installed).
   nixpkgs-lint-community): nix develop, or `direnv allow` once and it is
   automatic. Do NOT nixpkgs-review on the server — it can mean thousands of
   rebuilds and roommates depend on that box.
-- Checks: nix build .#checks.x86_64-linux.<name>, one at a time
-  (formatting, aurral, headroom, host-wheezertbts, host-frame-automata,
-  host-frame-automobile). NOT `nix flake check` — see below.
+- Checks: nix build .#checks.x86_64-linux.<name>
+  (names: nix eval .#checks.x86_64-linux --apply builtins.attrNames)
+  NOT `nix flake check` — it walks nixosConfigurations, so wonudesktop's throw
+  makes it red, AND it builds every check. See the comment on `checks`.
 - Secret edit (run from the secrets dir — the CLI resolves rules relative to cwd):
   cd hosts/wheezertbts/secrets      # server secrets
   cd hosts/frame-automata/secrets   # desktop secrets (samba-client.age)
@@ -55,8 +56,11 @@ host NOT administered by the person using it, NOT yet installed).
   not a bug. `nix flake check` walks nixosConfigurations on its own, so no
   flake output can suppress it; build checks by name instead (see Commands).
   When the real hardware scan lands: replace the file, `nix fmt` it, then add
-  wonudesktop to BOTH checks.host-* and the CI eval loop, and collapse CI back
-  to a plain `nix flake check`. Users: `wonu` (theirs, wheel) + `admin` (Thomas's key from
+  wonudesktop to checks.host-* — CI derives its host list from there, so that
+  is the only edit. Do NOT "switch back to `nix flake check`": it BUILDS every
+  check, and four NixOS closures do not fit a CI runner's disk. Today's split
+  (evaluate hosts, build the rest) is the steady state.
+  Users: `wonu` (theirs, wheel) + `admin` (Thomas's key from
   keys.nix, wheel) with :22 open on tailscale0 ONLY — the estate's only
   workstation that opens ssh, because remote support is the whole point.
   LTS kernel (out-of-tree NVIDIA module), autoUpgrade operation = "boot" (a
@@ -75,7 +79,8 @@ host NOT administered by the person using it, NOT yet installed).
   Traceway, neither wantedBy multi-user) — keep BOTH off wonudesktop;
   a host's own systemPackages is for that machine alone (laptop:
   keyd; power.nix: powertop/turbostat; wonudesktop: heroic/lutris/protonup-qt).
-  Not in nixpkgs -> pkgs/<name>/ + an overlay line in the flake's `shared` module.
+  Not in nixpkgs -> pkgs/<name>/ + a line in the flake's `ourPackages` overlay.
+  That is the ONLY edit: packages, checks and CI all derive their lists from it.
 - site.nix + modules/notify.nix — shared by all four hosts; edit once, not four times
 - .github/workflows/ci.yml — three jobs (nixfmt, evaluate the three installed
   hosts, build both packages). Each drives the flake's `checks`, so the rules

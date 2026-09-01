@@ -1,35 +1,39 @@
-# CI for this config. Every job drives the flake's own `checks` output rather
-# than restating the rules here, so there is one definition of "correct" and it
-# lives in flake.nix.
+# CI for this config. Every job derives its target list from the flake, so no
+# host or package name is written down here — add one to `ourPackages` or to
+# `checks` in flake.nix and CI picks it up with no edit to this file.
 #
-# Deliberately NOT `nix flake check`: that walks `nixosConfigurations` on its
-# own and dies on wonudesktop's hardware-configuration.nix placeholder, which
-# no output in flake.nix can suppress. Each check is built by name instead.
-# Collapse this back to a plain `nix flake check` the day that host is
-# installed.
+# Deliberately NOT `nix flake check`, for two reasons that do not expire
+# together. It walks `nixosConfigurations` and dies on wonudesktop's
+# hardware-configuration.nix placeholder — that one ends when the machine is
+# installed. It also BUILDS every check, and post-install `checks.host-*` is
+# four full NixOS closures, which do not fit a runner's free disk — that one
+# never ends. So this split is the steady state, not a workaround: evaluate
+# the host checks, build the rest.
 #
-# Deliberately NOT building the host closures either. `checks.host-*` are the
-# real gate and they are built locally on frame-automata before a switch —
-# three full NixOS closures do not fit in a GitHub-hosted runner's free disk.
-# CI evaluates them instead, which still catches the failure this repo actually
-# produces: a mistyped option, an unresolvable mkIf, a tripped assertion. It
-# will not catch a package that fails to compile.
+# Evaluating a host still catches what this repo actually gets wrong — a
+# mistyped option, an unresolvable mkIf, a tripped assertion. It will not
+# catch a package that fails to compile; that stays a local gate on
+# frame-automata before a switch.
 #
 # Action refs are floating. Pin them to commit SHAs if this repo ever takes
 # pull requests from outside.
 
 name: CI
 
+# push is main-only ON PURPOSE. With `branches: ["**"]` every PR push fired
+# both `push` and `pull_request`, and those get different `github.ref` values
+# (refs/heads/x vs refs/pull/N/merge) so the concurrency group below could not
+# cancel one against the other — six jobs per push instead of three.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 # A gate, not a record — a newer push to the same ref makes the older answer
 # irrelevant, so cancel it rather than pay for it.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -39,8 +43,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      # checks.formatting is nixfmt --check over every .nix file in the flake
-      # source. Reproduce a failure locally with the identical command.
+      # nixfmt --check over every .nix file in the flake. Reproduce a failure
+      # locally with the identical command.
       - run: nix build --no-link .#checks.x86_64-linux.formatting
 
   eval:
@@ -49,17 +53,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      # Forcing .drvPath evaluates the whole module system for each host —
-      # every option type-checked, every assertion run — while building
-      # nothing. wonudesktop is absent on purpose; add it here and to
-      # checks.host-* together once its hardware scan lands.
+      # --dry-run instantiates without building: it forces each host's whole
+      # module system (option types, assertions, mkIf) and stops at the .drv.
+      # One nix process for all hosts rather than one each — same work, ~15%
+      # less of it, since the module system is parsed once.
+      #
+      # The host list comes from checks.host-*, so flake.nix is the only place
+      # it exists. wonudesktop is absent because it is absent there.
       - run: |
-          for host in wheezertbts frame-automata frame-automobile; do
-            echo "::group::$host"
-            nix eval --raw ".#nixosConfigurations.$host.config.system.build.toplevel.drvPath"
-            echo
-            echo "::endgroup::"
-          done
+          hosts=$(nix eval --raw .#checks.x86_64-linux --apply \
+            'cs: with builtins; concatStringsSep " " (filter (n: match "host-.*" n != null) (attrNames cs))')
+          echo "evaluating: $hosts"
+          # shellcheck disable=SC2046
+          nix build --dry-run --no-link \
+            $(for h in $hosts; do printf '.#checks.x86_64-linux.%s ' "$h"; done)
 
   packages:
     name: build packages
@@ -67,8 +74,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
-      # The two derivations this repo owns. aurral is the one headed for
-      # nixpkgs, so a green run here is evidence for that PR and not just for
-      # this repo — it proves the derivation builds on a machine that is not
-      # Thomas's, from a cold store.
-      - run: nix build --no-link --print-build-logs .#aurral .#headroom
+      # The derivations this repo owns, read out of the packages output rather
+      # than named here. aurral is the one headed for nixpkgs, so a green run
+      # is evidence for that PR: it proves the derivation builds from a cold
+      # store on a machine that is not mine.
+      - run: |
+          names=$(nix eval --raw .#packages.x86_64-linux \
+            --apply 'ps: builtins.concatStringsSep " " (builtins.attrNames ps)')
+          echo "building: $names"
+          # shellcheck disable=SC2046
+          nix build --no-link --print-build-logs \
+            $(for p in $names; do printf '.#packages.x86_64-linux.%s ' "$p"; done)
