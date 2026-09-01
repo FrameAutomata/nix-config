@@ -1,0 +1,74 @@
+# CI for this config. Every job drives the flake's own `checks` output rather
+# than restating the rules here, so there is one definition of "correct" and it
+# lives in flake.nix.
+#
+# Deliberately NOT `nix flake check`: that walks `nixosConfigurations` on its
+# own and dies on wonudesktop's hardware-configuration.nix placeholder, which
+# no output in flake.nix can suppress. Each check is built by name instead.
+# Collapse this back to a plain `nix flake check` the day that host is
+# installed.
+#
+# Deliberately NOT building the host closures either. `checks.host-*` are the
+# real gate and they are built locally on frame-automata before a switch —
+# three full NixOS closures do not fit in a GitHub-hosted runner's free disk.
+# CI evaluates them instead, which still catches the failure this repo actually
+# produces: a mistyped option, an unresolvable mkIf, a tripped assertion. It
+# will not catch a package that fails to compile.
+#
+# Action refs are floating. Pin them to commit SHAs if this repo ever takes
+# pull requests from outside.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# A gate, not a record — a newer push to the same ref makes the older answer
+# irrelevant, so cancel it rather than pay for it.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    name: nixfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      # checks.formatting is nixfmt --check over every .nix file in the flake
+      # source. Reproduce a failure locally with the identical command.
+      - run: nix build --no-link .#checks.x86_64-linux.formatting
+
+  eval:
+    name: evaluate hosts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      # Forcing .drvPath evaluates the whole module system for each host —
+      # every option type-checked, every assertion run — while building
+      # nothing. wonudesktop is absent on purpose; add it here and to
+      # checks.host-* together once its hardware scan lands.
+      - run: |
+          for host in wheezertbts frame-automata frame-automobile; do
+            echo "::group::$host"
+            nix eval --raw ".#nixosConfigurations.$host.config.system.build.toplevel.drvPath"
+            echo
+            echo "::endgroup::"
+          done
+
+  packages:
+    name: build packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      # The two derivations this repo owns. aurral is the one headed for
+      # nixpkgs, so a green run here is evidence for that PR and not just for
+      # this repo — it proves the derivation builds on a machine that is not
+      # Thomas's, from a cold store.
+      - run: nix build --no-link --print-build-logs .#aurral .#headroom
