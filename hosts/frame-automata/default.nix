@@ -11,6 +11,7 @@ in
     ../../modules/common
     ../../modules/common/amdgpu.nix
     ../../modules/workstation
+    ../../modules/workstation/dev-databases.nix
     ../../modules/homelab-client
   ];
 

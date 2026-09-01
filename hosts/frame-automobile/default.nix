@@ -35,6 +35,7 @@ in
     ../../modules/common
     ../../modules/common/intel-gpu.nix
     ../../modules/workstation
+    ../../modules/workstation/dev-databases.nix
     ../../modules/homelab-client
   ];
 
