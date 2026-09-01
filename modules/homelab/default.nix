@@ -170,8 +170,7 @@ in
           # the global list counts too: a host may legitimately open :22
           # interface-independently (services.openssh.openFirewall = true),
           # which is MORE reachable than a lanPorts entry, not less
-          || lib.all (p: lib.elem p config.networking.firewall.allowedTCPPorts)
-            config.services.openssh.ports
+          || lib.all (p: lib.elem p config.networking.firewall.allowedTCPPorts) config.services.openssh.ports
           || lib.all (p: lib.elem p lanTCP) config.services.openssh.ports;
         message = ''
           homelab: sshd is enabled but nothing can reach it. No homelab.lanPorts

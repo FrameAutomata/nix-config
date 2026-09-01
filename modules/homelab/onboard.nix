@@ -9,7 +9,12 @@
 #
 # Media-app accounts (Jellyfin/Navidrome/Audiobookshelf) stay manual:
 # their admin API tokens only exist after each first-run wizard.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   homelab = config.homelab;
   services = homelab.services;
@@ -90,21 +95,24 @@ let
 
       ━━━ credential sheet — $handle ━━━━━━━━━━━━━━━━━━━━━━━━━━
       Start here:       https://welcome.${homelab.baseDomain}
-      ${lib.optionalString services.samba.enable ''
-      Network drive:    user $handle / $samba_pw''}
-      ${lib.optionalString services.filebrowser.enable ''
-      FileBrowser:      user $handle / $fb_pw''}
-      ${lib.optionalString services.headscale.enable ''
-      Tailnet key:      $hs_key''}
+      ${lib.optionalString services.samba.enable "Network drive:    user $handle / $samba_pw"}
+      ${lib.optionalString services.filebrowser.enable "FileBrowser:      user $handle / $fb_pw"}
+      ${lib.optionalString services.headscale.enable "Tailnet key:      $hs_key"}
       ${lib.optionalString services.vaultwarden.enable ''
-      Save everything in Vaultwarden (step 1 on the welcome page),
-      then destroy this sheet.''}
+        Save everything in Vaultwarden (step 1 on the welcome page),
+        then destroy this sheet.''}
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       SHEET
 
       ${lib.optionalString
-        (services.jellyfin.enable || services.navidrome.enable || services.audiobookshelf.enable || services.immich.enable)
-        ''echo "still manual: create '$handle' in the Jellyfin / Navidrome / Audiobookshelf / Immich admin UIs" >&2''}
+        (
+          services.jellyfin.enable
+          || services.navidrome.enable
+          || services.audiobookshelf.enable
+          || services.immich.enable
+        )
+        ''echo "still manual: create '$handle' in the Jellyfin / Navidrome / Audiobookshelf / Immich admin UIs" >&2''
+      }
     '';
   };
 in

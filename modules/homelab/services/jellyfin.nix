@@ -21,10 +21,16 @@ in
       # (last verified nixos-26.05 f197f8e). Upstream's own warning applies
       # too: these ports are changeable in Jellyfin's web UI, which would
       # desync them from both this list and the proxyPass below.
-      tcp = [ webPort 8920 ];
+      tcp = [
+        webPort
+        8920
+      ];
       # SSDP/DLNA + jellyfin's own client autodiscovery — both LAN-only by
       # nature, and useless to a client that can't reach the web port anyway
-      udp = [ 1900 7359 ];
+      udp = [
+        1900
+        7359
+      ];
     };
     homelab.nginx.internal.jellyfin = {
       proxyPass = "http://127.0.0.1:${toString webPort}";

@@ -66,7 +66,8 @@ in
     # When this box also runs headscale, point tailnet clients at AdGuard so
     # they get split DNS + blocking (overrides headscale.nix's mkDefault).
     services.headscale.settings.dns.nameservers.global =
-      lib.mkIf config.homelab.services.headscale.enable [ homelab.tailnetIP ];
+      lib.mkIf config.homelab.services.headscale.enable
+        [ homelab.tailnetIP ];
 
     # UDP 67 additionally when AdGuard is the LAN's DHCP server
     homelab.lanPorts.adguard = {

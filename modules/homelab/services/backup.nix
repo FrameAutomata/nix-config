@@ -8,7 +8,12 @@
 # (statePaths / quiesceUnits / excludePaths), so the manifest tracks
 # service enablement. Audit it with:
 #   nix eval .#nixosConfigurations.<host>.config.homelab.services.backup.statePaths
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.homelab.services.backup;
   homelab = config.homelab;

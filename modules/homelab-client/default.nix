@@ -1,6 +1,11 @@
 # Client-side hookups to the wheezertbts homelab, for machines that USE it
 # rather than run it. Never imports modules/homelab (the server side).
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.homelabClient;

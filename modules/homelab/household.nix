@@ -6,7 +6,12 @@
 # Honest caveat (also in the README): root on this box can read anything
 # except Vaultwarden vaults; admin-proof privacy needs client-side
 # encryption (e.g. Cryptomator) on top of a private share.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   homelab = config.homelab;
   cfg = homelab.household;
@@ -17,7 +22,14 @@ let
   # handles become unix user/group names, samba share sections, and
   # tmpfiles paths — a colliding or malformed one silently corrupts those
   # namespaces (e.g. a member named "shared" would replace the drop zone)
-  reservedHandles = [ "global" "media" "shared" "household" "homes" "printers" ];
+  reservedHandles = [
+    "global"
+    "media"
+    "shared"
+    "household"
+    "homes"
+    "printers"
+  ];
 in
 {
   options.homelab.household = {

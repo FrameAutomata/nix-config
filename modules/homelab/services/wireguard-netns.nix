@@ -3,7 +3,12 @@
 # route in there. If the tunnel is down, nothing in the netns can reach the
 # internet at all. Services opt in via NetworkNamespacePath.
 # Adapted from notthebee's nix-config (MIT).
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 let
   cfg = config.homelab.services.wireguard-netns;
 in
@@ -45,8 +50,9 @@ in
       };
     };
 
-    environment.etc."netns/${cfg.namespace}/resolv.conf".text =
-      lib.concatMapStrings (ip: "nameserver ${ip}\n") cfg.dnsIPs;
+    environment.etc."netns/${cfg.namespace}/resolv.conf".text = lib.concatMapStrings (
+      ip: "nameserver ${ip}\n"
+    ) cfg.dnsIPs;
 
     systemd.services.${cfg.namespace} = {
       description = "WireGuard tunnel inside the ${cfg.namespace} namespace";
