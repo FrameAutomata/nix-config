@@ -35,6 +35,7 @@ in
     ../../modules/common
     ../../modules/common/intel-gpu.nix
     ../../modules/workstation
+    ../../modules/workstation/dev.nix
     ../../modules/homelab-client
   ];
 
@@ -133,8 +134,8 @@ in
   };
 
   # For claude-desktop's runtime-downloaded claude-code, not the patchelf'd one
-  # modules/workstation installs — hosts/frame-automata/default.nix carries the
-  # full why.
+  # modules/workstation/dev.nix installs — hosts/frame-automata/default.nix carries
+  # the full why.
   programs.nix-ld.enable = true;
 
   # Weekly update from whatever is committed, so deploying is pushing.
@@ -152,7 +153,7 @@ in
     allowReboot = false;
   };
 
-  # Laptop-only; the shared workstation app set is in modules/workstation.
+  # Laptop-only; the shared app sets are modules/workstation + its dev.nix.
   environment.systemPackages = with pkgs; [
     keyd # the CLI (`keyd monitor`); services.keyd installs only the daemon
   ];

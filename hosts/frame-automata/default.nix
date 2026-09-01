@@ -11,6 +11,7 @@ in
     ../../modules/common
     ../../modules/common/amdgpu.nix
     ../../modules/workstation
+    ../../modules/workstation/dev.nix
     ../../modules/homelab-client
   ];
 
@@ -76,7 +77,7 @@ in
     cowork.kvmUsers = [ "frame-automata" ];
   };
 
-  # For claude-desktop, NOT for the claude-code modules/workstation installs.
+  # For claude-desktop, NOT for the claude-code modules/workstation/dev.nix installs.
   # The app downloads its own claude-code at runtime into
   # ~/.config/Claude/claude-code/<version>/ and execs it; that binary is a
   # generic-linux build whose PT_INTERP is /lib64/ld-linux-x86-64.so.2, so it
