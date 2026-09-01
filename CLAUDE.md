@@ -1,7 +1,9 @@
-# nix-config — wheezertbts homelab + frame-automata desktop + frame-automobile laptop
-NixOS 26.05 flake. Three hosts: `wheezertbts` (live server; roommates depend on
-it), `frame-automata` (Thomas's desktop, admin workstation) and
-`frame-automobile` (Thomas's laptop, no secrets on it).
+# nix-config — wheezertbts homelab + frame-automata desktop + frame-automobile laptop + wonudesktop
+NixOS 26.05 flake. Four hosts: `wheezertbts` (live server; roommates depend on
+it), `frame-automata` (Thomas's desktop, admin workstation),
+`frame-automobile` (Thomas's laptop, no secrets on it) and `wonudesktop`
+(girlfriend's desktop — 5800X3D/RTX 2070 Super, gaming + productivity; the one
+host NOT administered by the person using it, NOT yet installed).
 
 ## Hard rules
 - Never disable openssh / remove authorized keys / close port 22.
@@ -12,7 +14,7 @@ it), `frame-automata` (Thomas's desktop, admin workstation) and
 
 ## Commands
 - Rebuild: sudo nixos-rebuild switch --flake .#wheezertbts
-  (or .#frame-automata, .#frame-automobile)
+  (or .#frame-automata, .#frame-automobile, .#wonudesktop)
 - Safe try: sudo nixos-rebuild test --flake .#wheezertbts
 - Rollback: sudo nixos-rebuild switch --rollback
 - Secret edit (run from the secrets dir — the CLI resolves rules relative to cwd):
@@ -33,15 +35,30 @@ it), `frame-automata` (Thomas's desktop, admin workstation) and
   modules/common/intel-gpu.nix and a host-local power.nix. NO secrets dir and no
   key in keys.nix, deliberately: its disk is unencrypted, so a host key there
   would be a decryption capability for anyone holding the laptop
-- Both workstations share the nixpkgs-workstation input; the server has its own
+- hosts/wonudesktop/ — girlfriend's desktop; modules/workstation (NOT its
+  dev.nix) + modules/common/nvidia.nix + host-local gpu.nix (RTX 2070 Super:
+  open kernel modules, VRAM-preserving suspend) + modules/homelab-client.
+  hardware-configuration.nix is a `throw` PLACEHOLDER until the machine is
+  installed, so this host does not eval and `nix flake check` is red — expected,
+  not a bug. Users: `wonu` (theirs, wheel) + `admin` (Thomas's key from
+  keys.nix, wheel) with :22 open on tailscale0 ONLY — the estate's only
+  workstation that opens ssh, because remote support is the whole point.
+  LTS kernel (out-of-tree NVIDIA module), autoUpgrade operation = "boot" (a
+  live driver swap breaks GL until reboot), Flatpak+Discover so its user can
+  install apps without a commit. NO secrets/keys.nix entry YET — pending, not
+  principled (unlike the laptop): enrolling a host key is step 1 of samba
+  mounts. Also pending: homelab.household.members handle if they want a share
+- All three workstations share the nixpkgs-workstation input; the server has its own
   nixpkgs. Never `nix flake update` bare — it moves everything. Update by name.
 - modules/homelab/ — options + service modules (homelab.services.<name>)
-- Packages: modules/common = all three hosts; modules/workstation = both
-  workstations (the shared app set lives here — edit once, not twice); a host's
-  own systemPackages is for that machine alone (laptop: keyd; power.nix:
-  powertop/turbostat). Not in nixpkgs -> pkgs/<name>/ + an overlay line in the
-  flake's `shared` module.
-- site.nix + modules/notify.nix — shared by all three hosts; edit once, not thrice
+- Packages: modules/common = all four hosts; modules/workstation = all three
+  workstations (the shared interactive app set — edit once, not thrice);
+  modules/workstation/dev.nix = the two hosts Thomas administers from (editors,
+  nixd, gh, claude-code, headroom, direnv, nixos-release-check) — keep this off
+  wonudesktop; a host's own systemPackages is for that machine alone (laptop:
+  keyd; power.nix: powertop/turbostat; wonudesktop: heroic/lutris/protonup-qt).
+  Not in nixpkgs -> pkgs/<name>/ + an overlay line in the flake's `shared` module.
+- site.nix + modules/notify.nix — shared by all four hosts; edit once, not four times
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note

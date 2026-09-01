@@ -1,7 +1,8 @@
 # nix-config
 
 NixOS flake for the `wheezertbts` household homelab server, the `frame-automata`
-desktop that administers it, and the `frame-automobile` laptop.
+desktop that administers it, the `frame-automobile` laptop, and `wonudesktop` —
+the second desktop, someone else's daily driver.
 
 **Status:** Phase 7 — safety net live: hourly btrbk snapshots of the media
 pool, nightly restic backups of service state to a local repo on the
@@ -18,6 +19,7 @@ sudo nixos-rebuild test --flake .#wheezertbts    # apply without making it the b
 sudo nixos-rebuild switch --flake .#wheezertbts
 sudo nixos-rebuild switch --flake .#frame-automata   # the desktop
 sudo nixos-rebuild switch --flake .#frame-automobile # the laptop
+sudo nixos-rebuild switch --flake .#wonudesktop      # the second desktop
 sudo nixos-rebuild switch --rollback             # undo
 ```
 
@@ -28,9 +30,14 @@ sudo nixos-rebuild switch --rollback             # undo
   the `admin` key that edits *both* sets, so it is the recovery path if either
   host key rotates
 - `hosts/frame-automobile/` — laptop config; no secrets and no key in `keys.nix`
+- `hosts/wonudesktop/` — second desktop (5800X3D / RTX 2070 Super), someone
+  else's daily driver; NVIDIA gaming layer in its own `gpu.nix`, no secrets yet
 - `modules/common/` — host-agnostic base (locale, nix settings, ssh, gpu;
-  `amdgpu.nix` and `intel-gpu.nix` are opt-in per host)
-- `modules/workstation/` — interactive base: Plasma, audio, gaming, nix gc
+  `amdgpu.nix`, `intel-gpu.nix` and `nvidia.nix` are opt-in per host)
+- `modules/workstation/` — interactive base: Plasma, audio, gaming, nix gc.
+  Its `dev.nix` is the admin layer on top (editors, `nixd`, `gh`, `claude-code`,
+  direnv, the release check), imported only by the two hosts this repo is
+  deployed from
 - `modules/homelab-client/` — the *using* side: tailnet, ntfy alerts, mounts
 - `modules/notify.nix` — ntfy failure alerts, shared by server and clients
 - `site.nix` — facts both sides need (domain, LAN IP, topic, timezone)
@@ -278,3 +285,166 @@ sudo tailscale up --login-server https://wheezertbts.duckdns.org --auth-key <key
 is a committed scan of this machine. Regenerate it on a reinstall, and note that
 a scan taken with no USB storage attached drops `usb_storage`/`sd_mod` — which
 is why `default.nix` adds them back.
+
+## Second desktop (`wonudesktop`)
+
+The old AM4 box — Ryzen 7 5800X3D, RTX 2070 Super — rebuilt as somebody else's
+daily driver: gaming and productivity, no Windows license, and a user who has
+used Windows and macOS but never a machine that did not come in one piece from
+a manufacturer. That last fact is what shaped this config. It is the only host
+in the estate that is not administered by the person sitting at it, so where a
+choice trades a little of the admin's convenience for a machine that does not
+surprise its user, it goes that way — and the reason is in the file.
+
+Same `nixpkgs-workstation` input as the other two workstations, so all three
+move together and a bad revision is never true on one and false on another.
+
+What differs from `frame-automata`, which is otherwise the same class of
+machine:
+
+- **`modules/workstation` but not `modules/workstation/dev.nix`.** The Plasma /
+  audio / Steam / browser / LibreOffice base is shared by every interactive
+  machine; the editors, terminals, `nixd`, `gh`, `claude-code`, `headroom`,
+  direnv and the NixOS-release check moved into `dev.nix`, which only the two
+  hosts this repo is deployed from import. The split is admin-vs-not, not
+  desktop-vs-laptop, so there is still exactly one place to edit anything true
+  of all three.
+- **The LTS kernel** (`pkgs.linuxPackages`, 6.18) rather than
+  `linuxPackages_latest` (7.2). The other two hosts have in-tree GPU drivers,
+  so tracking mainline is free there. Here the NVIDIA module is an out-of-tree
+  build that has to catch up to each kernel release, and the window where it
+  has not is a machine that boots to a black screen.
+- **Open NVIDIA kernel modules** (`hardware.nvidia.open = true`, in
+  `hosts/wonudesktop/gpu.nix`). Turing is exactly where upstream's own advice
+  flips — the nvidia module says to use the open modules on Turing and later,
+  the closed ones below it — and open is also what enables the driver's kernel
+  suspend-notifier path on 595+. The server keeps the closed module;
+  `modules/common/nvidia.nix` now says `open = lib.mkDefault false` so that is
+  a per-card decision rather than a house rule. Paired with
+  `powerManagement.enable`, which preserves VRAM across suspend: without it
+  NVIDIA documents the contents as undefined after a wake, and "the desktop
+  came back corrupted" is the failure this machine's user is least equipped to
+  deal with.
+- **The weekly upgrade applies at the next boot**, `operation = "boot"` rather
+  than `"switch"`. A switch that lands a new NVIDIA release swaps the userspace
+  libraries under a running session while the loaded kernel module stays where
+  it was, and nothing can open a GL context until a reboot. On an admin's
+  machine that is a recognisable annoyance; here it is a computer that broke
+  itself mid-afternoon with nobody to explain why.
+- **Flatpak and Discover.** Enabling `services.flatpak` is what makes Plasma
+  ship Discover at all (its PackageKit backend has no Nix support). A
+  `flathub-remote` oneshot registers Flathub, since remotes have no NixOS
+  option; it is deliberately *not* ordered after `network-online.target`,
+  which is on the path to the login screen, and instead fails fast and retries.
+  The trade is explicit: apps installed this way are not declarative and not in
+  this repo. On a machine whose user cannot be expected to open a pull request
+  to get Spotify, the alternative is not a tidier config — it is a person who
+  cannot install anything.
+- **SSH reachable on `tailscale0` only, plus an `admin` account.** This is the
+  first workstation in the estate that opens :22, because "walk over and look
+  at it" is not a support path for someone else's computer. The tailscale
+  module does not put its own interface in `trustedInterfaces`, so nothing is
+  implied by the tailnet being up; the port never appears on the LAN. The
+  `admin` account carries the `admin` key from `keys.nix` and exists so that
+  the user can change their own password without cutting off support.
+- **Windows-refugee ergonomics**: metric-compatible fonts (Liberation, Carlito,
+  Caladea) so a `.docx` in Arial or Calibri does not reflow, CUPS + Avahi for
+  driverless network printers, zram instead of an OOM kill, and
+  `/etc/xdg/kdeglobals` setting `SingleClick=false` — a system *default*, not a
+  lock, so the moment they change it in System Settings their own config wins.
+
+### First boot — none of this is declarative
+
+**1. Hardware scan.** `hosts/wonudesktop/hardware-configuration.nix` is a
+`throw` placeholder, so the host does not evaluate at all until it is replaced
+(and `nix flake check` is red for the repo meanwhile — that is this file
+talking, not a broken config; the other three hosts are separate evals and are
+unaffected). Install in **UEFI mode**: `modules/common` uses systemd-boot.
+
+```sh
+nixos-generate-config --root /mnt          # from the installer
+# copy /mnt/etc/nixos/hardware-configuration.nix to hosts/wonudesktop/
+nixos-install --flake .#wonudesktop
+```
+
+**Commit and push the scan.** `system.autoUpgrade` builds from
+`github:FrameAutomata/nix-config`, so an uncommitted scan means local rebuilds
+work while every weekly upgrade dies on the placeholder.
+
+**2. Two passwords.** No account sets `hashedPassword`/`initialPassword` — a
+public repo is no place for either — so a fresh install leaves both locked and
+SDDM rejects every password. From a root TTY:
+
+```sh
+passwd wonu     # theirs; hand it over and let them change it
+passwd admin    # Thomas's, for sudo after an SSH login
+```
+
+The `admin` account is key-only over SSH (`PasswordAuthentication = false`),
+but it still needs a local password, because sudo asks for one.
+
+**3. Check the username before installing, not after.** The account is `wonu`
+because the host is `wonudesktop`; every other host in this repo names its user
+after the machine, which works only because those accounts are all Thomas's. A
+username owns the home directory, the Steam library and the Plasma config, so
+changing it later is real work — and if this person is ever given a homelab
+share, life is simplest when this handle matches their
+`homelab.household.members` handle.
+
+**4. Join the tailnet.** No `authKeyFile`; pre-auth keys expire in 24h. Mint one
+on the server (`headscale preauthkeys create`), then:
+
+```sh
+sudo tailscale up --login-server https://wheezertbts.duckdns.org --auth-key <key> --accept-routes
+```
+
+Until this is done, SSH has no route in and `nixos-upgrade` failures have
+nowhere to publish.
+
+**5. Plasma settings that cannot be declared.** This repo runs no home-manager,
+so per-user Plasma state is manual — same limitation as the laptop's lid
+behaviour. Worth doing with them on day one:
+
+> - The SDDM session picker offers **Plasma (Wayland)** and **Plasma (X11)**.
+>   Wayland is the default and is the right one on this driver; X11 is the
+>   fallback if something specific misbehaves.
+> - Discover → Settings → check Flathub is listed (the `flathub-remote` unit
+>   registers it; `systemctl status flathub-remote` if it is not).
+> - Steam → Settings → Compatibility → enable Proton for all titles.
+
+### Deliberately not wired up yet
+
+- **No Samba mounts and no secrets.** This host has no key in `keys.nix`, so it
+  cannot decrypt a `samba-client` secret of its own. Unlike the laptop, that is
+  not a standing decision — it is just a machine that does not exist yet. To
+  change it: enroll `/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix`, add
+  `hosts/wonudesktop/secrets/` with its own `secrets.nix` naming only `admin`
+  and this host, add `agenix.nixosModules.default` to its module list in
+  `flake.nix`, and set `homelabClient.mounts` the way
+  `hosts/frame-automata/default.nix` does.
+- **No household membership.** A private share on the server means a handle in
+  `homelab.household.members` (server-side, their agreed nickname, `smbpasswd
+  -a` and the onboarding sheet from `sudo homelab-onboard <handle>`). That is
+  their decision to make, not something to do on their behalf.
+- **Nothing on this machine is backed up.** The homelab's restic and btrbk jobs
+  cover server state only. Documents saved to this desktop's home directory
+  exist in exactly one place until the two items above are done and they start
+  saving to their share.
+
+### What Linux will not do, and it is better to say so first
+
+Steam plus Proton covers the large majority of a modern library, and this
+machine has the hardware for it. The exceptions are worth naming before someone
+is disappointed by them:
+
+- **Games with kernel-level anti-cheat** — Valorant, Fortnite, Destiny 2, and
+  others — do not run and will not be made to. Check a library against
+  [ProtonDB](https://www.protondb.com) and
+  [areweanticheatyet.com](https://areweanticheatyet.com) *before* promising
+  anything.
+- **Adobe's desktop apps** (Photoshop, Lightroom, Premiere) have no supported
+  path here.
+- **Desktop Microsoft Office** does not install. Office on the web works in a
+  browser, LibreOffice is installed, and OnlyOffice
+  (`pkgs.onlyoffice-desktopeditors`, or the Flathub build) is the closest match
+  for `.docx` fidelity if LibreOffice's rendering ever grates.
