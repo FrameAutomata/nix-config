@@ -56,7 +56,10 @@ in
     # services.tailscale.openFirewall above (UDP 41641) — restricting it to
     # the LAN would break NAT traversal and force every peer onto DERP relay.
     networking.firewall = {
-      allowedTCPPorts = [ 80 443 ];
+      allowedTCPPorts = [
+        80
+        443
+      ];
       # the tailnet's firewall bypass — homelab.lanPorts' description depends
       # on this, and it lives inside this module's mkIf
       trustedInterfaces = [ "tailscale0" ];

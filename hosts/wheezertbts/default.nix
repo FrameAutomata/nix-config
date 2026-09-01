@@ -22,7 +22,12 @@ in
   age.secrets.b2-env.file = ./secrets/b2-env.age;
 
   homelab = {
-    inherit (site) baseDomain lanCIDR lanIP timeZone;
+    inherit (site)
+      baseDomain
+      lanCIDR
+      lanIP
+      timeZone
+      ;
     lanInterface = "enp3s0";
     tailnetIP = "100.64.0.1";
     user = "wheezertbts";
@@ -57,7 +62,10 @@ in
         enable = true;
         configFile = config.age.secrets.surfshark-wg.path;
         privateIP = "10.14.0.2/16";
-        dnsIPs = [ "162.252.172.57" "149.154.159.92" ];
+        dnsIPs = [
+          "162.252.172.57"
+          "149.154.159.92"
+        ];
       };
       qbittorrent.enable = true;
       vaultwarden = {
@@ -158,7 +166,12 @@ in
     isNormalUser = true;
     description = "Wheezer the Band the Server";
     # video/render = GPU access for this host's NVIDIA card (modules/common/nvidia.nix)
-    extraGroups = [ "networkmanager" "wheel" "video" "render" ];
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+      "video"
+      "render"
+    ];
     openssh.authorizedKeys.keys = [ (import ../../keys.nix).admin ];
   };
 

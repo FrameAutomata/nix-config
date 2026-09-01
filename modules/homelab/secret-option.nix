@@ -21,7 +21,8 @@ lib.mkOption {
     (config.age.secrets.${secret} or (throw ''
       ${optionPath}: the host must declare age.secrets.${secret}
       (${hint})
-    '')).path;
+    '')
+    ).path;
   defaultText = "config.age.secrets.${secret}.path";
   inherit description;
 }

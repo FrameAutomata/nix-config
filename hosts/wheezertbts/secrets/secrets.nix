@@ -7,7 +7,10 @@ let
   # Same two keys this file has always named, so nothing here needs rekeying:
   # the desktop's host key is enrolled in keys.nix but deliberately not added
   # to these — it has no business decrypting restic or B2 credentials.
-  all = [ keys.admin keys.hosts.wheezertbts ];
+  all = [
+    keys.admin
+    keys.hosts.wheezertbts
+  ];
 in
 {
   "duckdns-token.age".publicKeys = all;

@@ -2,7 +2,12 @@
 # torrent traffic goes through the tunnel or nowhere. The WebUI is reachable
 # on the host via a systemd socket proxy (the only deliberate hole), fronted
 # by the internal vhost. Socket-proxy pattern adapted from notthebee (MIT).
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 let
   homelab = config.homelab;
   cfg = homelab.services.qbittorrent;
@@ -63,8 +68,14 @@ in
 
     systemd.services.qbittorrent-proxy = {
       description = "Proxy to the qBittorrent WebUI inside the ${ns} namespace";
-      requires = [ "qbittorrent.service" "qbittorrent-proxy.socket" ];
-      after = [ "qbittorrent.service" "qbittorrent-proxy.socket" ];
+      requires = [
+        "qbittorrent.service"
+        "qbittorrent-proxy.socket"
+      ];
+      after = [
+        "qbittorrent.service"
+        "qbittorrent-proxy.socket"
+      ];
       unitConfig.JoinsNamespaceOf = "qbittorrent.service";
       serviceConfig = {
         ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd --exit-idle-time=5min 127.0.0.1:${toString webuiPort}";

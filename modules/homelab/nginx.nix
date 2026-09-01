@@ -9,7 +9,12 @@ let
   certName = "wildcard-${homelab.baseDomain}";
   # single source for tile categories: the enum below turns a typo'd
   # category into an eval error, and homepage.nix renders in this order
-  dashboardCategories = [ "Media" "Downloads" "Household" "Infrastructure" ];
+  dashboardCategories = [
+    "Media"
+    "Downloads"
+    "Household"
+    "Infrastructure"
+  ];
 in
 {
   options.homelab.nginx = {
@@ -118,7 +123,10 @@ in
 
     # The proxy layer owns its own ports (headscale.nix keeping a copy is a
     # harmless list merge).
-    networking.firewall.allowedTCPPorts = [ 80 443 ];
+    networking.firewall.allowedTCPPorts = [
+      80
+      443
+    ];
 
     # The host itself resolves via public upstreams (AdGuard split DNS
     # serves only LAN/tailnet clients), so pin every internal vhost locally
@@ -150,8 +158,7 @@ in
             # block below stays byte-identical for every vhost that sets no
             # body-size override (null => "" => unchanged output)
             extraConfig =
-              lib.optionalString (vh.clientMaxBodySize != null)
-                "client_max_body_size ${vh.clientMaxBodySize};\n"
+              lib.optionalString (vh.clientMaxBodySize != null) "client_max_body_size ${vh.clientMaxBodySize};\n"
               + ''
                 allow ${homelab.lanCIDR};
                 allow ${homelab.tailnetCIDR};

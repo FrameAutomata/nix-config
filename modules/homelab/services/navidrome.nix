@@ -37,11 +37,12 @@ in
     # dead to every group member. Keep the create-only (:) semantics but
     # with the library's perms, so a fresh mount stays usable by all readers.
     systemd.tmpfiles.settings.navidromeDirs.${config.services.navidrome.settings.MusicFolder}.d =
-      lib.mkForce {
-        user = ":root";
-        group = ":${homelab.group}";
-        mode = ":2775";
-      };
+      lib.mkForce
+        {
+          user = ":root";
+          group = ":${homelab.group}";
+          mode = ":2775";
+        };
 
     homelab.nginx.internal.music = {
       proxyPass = "http://127.0.0.1:${toString config.services.navidrome.settings.Port}";

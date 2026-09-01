@@ -4,7 +4,12 @@
 # credential sheet — the page does the rest. Sections render only for
 # services that are actually enabled. No secrets here: the repo is public
 # and so is everything this page interpolates.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.homelab.services.welcome;
   homelab = config.homelab;
@@ -19,8 +24,9 @@ let
   # listing per platform (Navidrome, Audiobookshelf on iOS) the chip points at
   # the project's own client list instead of the admin picking for everyone.
   appRow = links: ''
-    <p class="apps">${lib.concatMapStrings
-      (l: ''<a class="app" href="${l.url}">${l.name}</a>'') links}</p>
+    <p class="apps">${
+      lib.concatMapStrings (l: ''<a class="app" href="${l.url}">${l.name}</a>'') links
+    }</p>
   '';
 
   page = pkgs.writeTextDir "index.html" ''
@@ -69,9 +75,18 @@ let
         As you go through the steps below, save every credential from your
         sheet in here — then shred the sheet.</p>
         ${appRow [
-          { name = "iPhone / iPad"; url = "https://apps.apple.com/us/app/bitwarden-password-manager/id1137397744"; }
-          { name = "Android"; url = "https://play.google.com/store/apps/details?id=com.x8bit.bitwarden"; }
-          { name = "Browser &amp; desktop"; url = "https://bitwarden.com/download/"; }
+          {
+            name = "iPhone / iPad";
+            url = "https://apps.apple.com/us/app/bitwarden-password-manager/id1137397744";
+          }
+          {
+            name = "Android";
+            url = "https://play.google.com/store/apps/details?id=com.x8bit.bitwarden";
+          }
+          {
+            name = "Browser &amp; desktop";
+            url = "https://bitwarden.com/download/";
+          }
         ]}
         <p class="muted">Point it at our server <b>before</b> you log in — the
         gear/settings icon on the login screen → self-hosted environment →
@@ -97,7 +112,10 @@ let
               Explorer) → host <code>${homelab.baseDomain}</code></li>
         </ul>
         ${appRow [
-          { name = "Android — Cx File Explorer"; url = "https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer"; }
+          {
+            name = "Android — Cx File Explorer";
+            url = "https://play.google.com/store/apps/details?id=com.cxinventor.file.explorer";
+          }
         ]}
         <p>Shares: your <b>private share</b> is named after your handle
         (hidden — type the path), <code>shared</code> is the household drop
@@ -123,12 +141,26 @@ let
         ${when services.jellyfin.enable ''
           <li><a href="${url "jellyfin"}">Jellyfin</a> — movies &amp; TV.
               Server <code>${url "jellyfin"}</code>. Works in any browser too.
-              ${appRow [
-                { name = "iPhone / Apple TV — Swiftfin"; url = "https://apps.apple.com/us/app/swiftfin/id1604098728"; }
-                { name = "Android"; url = "https://play.google.com/store/apps/details?id=org.jellyfin.mobile"; }
-                { name = "Android TV / Fire TV"; url = "https://play.google.com/store/apps/details?id=org.jellyfin.androidtv"; }
-                { name = "Other devices"; url = "https://jellyfin.org/downloads/"; }
-              ]}</li>
+              ${
+                appRow [
+                  {
+                    name = "iPhone / Apple TV — Swiftfin";
+                    url = "https://apps.apple.com/us/app/swiftfin/id1604098728";
+                  }
+                  {
+                    name = "Android";
+                    url = "https://play.google.com/store/apps/details?id=org.jellyfin.mobile";
+                  }
+                  {
+                    name = "Android TV / Fire TV";
+                    url = "https://play.google.com/store/apps/details?id=org.jellyfin.androidtv";
+                  }
+                  {
+                    name = "Other devices";
+                    url = "https://jellyfin.org/downloads/";
+                  }
+                ]
+              }</li>
         ''}
         ${when services.jellyseerr.enable ''
           <li><a href="${url "requests"}">Requests</a> — ask for new movies
@@ -152,11 +184,22 @@ let
               up and passes them to you; you'll change the password on first
               login. Then turn on backup in the app (Settings → Backup). Your
               photos are private to your account — other members can't see them.
-              ${appRow [
-                { name = "iPhone / iPad"; url = "https://apps.apple.com/us/app/immich/id1613945652"; }
-                { name = "Android"; url = "https://play.google.com/store/apps/details?id=app.alextran.immich"; }
-                { name = "Other devices"; url = "https://immich.app/docs/features/mobile-app/"; }
-              ]}</li>
+              ${
+                appRow [
+                  {
+                    name = "iPhone / iPad";
+                    url = "https://apps.apple.com/us/app/immich/id1613945652";
+                  }
+                  {
+                    name = "Android";
+                    url = "https://play.google.com/store/apps/details?id=app.alextran.immich";
+                  }
+                  {
+                    name = "Other devices";
+                    url = "https://immich.app/docs/features/mobile-app/";
+                  }
+                ]
+              }</li>
         ''}
         ${when services.navidrome.enable ''
           <li><a href="${url "music"}">Music</a> — the shared library.
@@ -164,10 +207,22 @@ let
               they play albums <b>gaplessly</b> and auto-advance, which the
               in-browser player does not.
               ${appRow [
-                { name = "iPhone / iPad / Mac — Amperfy"; url = "https://apps.apple.com/us/app/amperfy-music/id1530145038"; }
-                { name = "Android — Tempo"; url = "https://cappielloantonio.github.io/tempo/"; }
-                { name = "Windows / Mac / Linux — Supersonic"; url = "https://github.com/dweymouth/supersonic/releases"; }
-                { name = "Other clients"; url = "https://www.navidrome.org/docs/overview/#apps"; }
+                {
+                  name = "iPhone / iPad / Mac — Amperfy";
+                  url = "https://apps.apple.com/us/app/amperfy-music/id1530145038";
+                }
+                {
+                  name = "Android — Tempo";
+                  url = "https://cappielloantonio.github.io/tempo/";
+                }
+                {
+                  name = "Windows / Mac / Linux — Supersonic";
+                  url = "https://github.com/dweymouth/supersonic/releases";
+                }
+                {
+                  name = "Other clients";
+                  url = "https://www.navidrome.org/docs/overview/#apps";
+                }
               ]}
               <span class="muted">Set it up once: on the app's add-server / login
               screen enter server <code>${url "music"}</code>, username your
@@ -181,9 +236,18 @@ let
           <li><a href="${url "abs"}">Audiobooks &amp; podcasts</a> —
               Audiobookshelf, server <code>${url "abs"}</code>.
               ${appRow [
-                { name = "Android"; url = "https://play.google.com/store/apps/details?id=com.audiobookshelf.app"; }
-                { name = "iPhone — ShelfPlayer"; url = "https://apps.apple.com/us/app/shelfplayer/id6475221163"; }
-                { name = "iPhone — SoundLeaf"; url = "https://apps.apple.com/us/app/soundleaf/id6738635634"; }
+                {
+                  name = "Android";
+                  url = "https://play.google.com/store/apps/details?id=com.audiobookshelf.app";
+                }
+                {
+                  name = "iPhone — ShelfPlayer";
+                  url = "https://apps.apple.com/us/app/shelfplayer/id6475221163";
+                }
+                {
+                  name = "iPhone — SoundLeaf";
+                  url = "https://apps.apple.com/us/app/soundleaf/id6738635634";
+                }
               ]}
               <span class="muted">There is no official iPhone app yet — those
               two are third-party players (paid or paid-extras) that talk to
@@ -201,9 +265,18 @@ let
         <code>${url "ntfy"}</code>, topic
         <code>${services.ntfy.topic}</code>.</p>
         ${appRow [
-          { name = "iPhone / iPad"; url = "https://apps.apple.com/us/app/ntfy/id1625396347"; }
-          { name = "Android"; url = "https://play.google.com/store/apps/details?id=io.heckel.ntfy"; }
-          { name = "Android — F-Droid"; url = "https://f-droid.org/packages/io.heckel.ntfy/"; }
+          {
+            name = "iPhone / iPad";
+            url = "https://apps.apple.com/us/app/ntfy/id1625396347";
+          }
+          {
+            name = "Android";
+            url = "https://play.google.com/store/apps/details?id=io.heckel.ntfy";
+          }
+          {
+            name = "Android — F-Droid";
+            url = "https://f-droid.org/packages/io.heckel.ntfy/";
+          }
         ]}
       </div>
     ''}
@@ -216,9 +289,18 @@ let
         house VPN. Install the Tailscale app, but sign in against
         <b>our</b> server, not Tailscale's:</p>
         ${appRow [
-          { name = "iPhone / iPad"; url = "https://apps.apple.com/us/app/tailscale/id1470499037"; }
-          { name = "Android"; url = "https://play.google.com/store/apps/details?id=com.tailscale.ipn"; }
-          { name = "Windows / macOS / Linux"; url = "https://tailscale.com/download"; }
+          {
+            name = "iPhone / iPad";
+            url = "https://apps.apple.com/us/app/tailscale/id1470499037";
+          }
+          {
+            name = "Android";
+            url = "https://play.google.com/store/apps/details?id=com.tailscale.ipn";
+          }
+          {
+            name = "Windows / macOS / Linux";
+            url = "https://tailscale.com/download";
+          }
         ]}
         <ul>
           <li><b>iPhone:</b> account icon → "Log in…" → options menu →
@@ -255,7 +337,8 @@ let
   '';
 in
 {
-  options.homelab.services.welcome.enable = lib.mkEnableOption "the household onboarding welcome page";
+  options.homelab.services.welcome.enable =
+    lib.mkEnableOption "the household onboarding welcome page";
 
   config = lib.mkIf cfg.enable {
     homelab.nginx.internal.${subdomain} = {

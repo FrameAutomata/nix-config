@@ -1,6 +1,11 @@
 # DuckDNS IP updater. The token comes from an agenix EnvironmentFile
 # (DUCKDNS_TOKEN=...) declared by the host as age.secrets.duckdns-token.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.homelab.services.duckdns;
   # DuckDNS updates are keyed on the subdomain, i.e. the first label of baseDomain

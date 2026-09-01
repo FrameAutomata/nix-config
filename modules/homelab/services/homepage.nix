@@ -21,9 +21,7 @@ in
       };
       services =
         let
-          tiles = lib.attrsToList (
-            lib.filterAttrs (_: vh: vh.dashboard != null) homelab.nginx.internal
-          );
+          tiles = lib.attrsToList (lib.filterAttrs (_: vh: vh.dashboard != null) homelab.nginx.internal);
           grouped = lib.groupBy (t: t.value.dashboard.category) tiles;
         in
         map (cat: {

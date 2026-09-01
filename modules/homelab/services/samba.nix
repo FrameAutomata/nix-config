@@ -55,7 +55,10 @@ in
       forceGroup = homelab.group;
       # the household areas are reached only through their own shares
       # (household.nix) with per-area auth — never through the library share
-      vetoFiles = [ "Private" "Shared" ];
+      vetoFiles = [
+        "Private"
+        "Shared"
+      ];
     };
 
     services.samba = {
@@ -95,8 +98,14 @@ in
     #   nixos/modules/services/network-filesystems/samba.nix:258-265
     #   nixos/modules/services/network-filesystems/samba-wsdd.nix:143-146
     homelab.lanPorts.samba = {
-      tcp = [ 139 445 ]; # SMB
-      udp = [ 137 138 ]; # NetBIOS name/datagram
+      tcp = [
+        139
+        445
+      ]; # SMB
+      udp = [
+        137
+        138
+      ]; # NetBIOS name/datagram
     };
     homelab.lanPorts.samba-wsdd = {
       tcp = [ 5357 ]; # WSD HTTP

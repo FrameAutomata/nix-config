@@ -1,7 +1,12 @@
 # ntfy push notifications + the OnFailure plumbing: modules register their
 # critical units in homelab.services.ntfy.notifyOnFailure and a failure
 # pushes the unit's last log lines to the household topic.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.homelab.services.ntfy;
   homelab = config.homelab;

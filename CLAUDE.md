@@ -17,6 +17,18 @@ host NOT administered by the person using it, NOT yet installed).
   (or .#frame-automata, .#frame-automobile, .#wonudesktop)
 - Safe try: sudo nixos-rebuild test --flake .#wheezertbts
 - Rollback: sudo nixos-rebuild switch --rollback
+- Format: nix fmt   <- run before every commit; CI gates it (checks.formatting).
+  nixos-generate-config does NOT emit nixfmt-clean output, so a freshly
+  regenerated hardware-configuration.nix fails the check until you run this.
+- Build one package alone (the packaging loop): nix build .#aurral / .#headroom
+- Contribution tooling (nixpkgs-review, nix-init, nurl, nix-update, nixfmt,
+  nixpkgs-lint-community): nix develop, or `direnv allow` once and it is
+  automatic. Do NOT nixpkgs-review on the server — it can mean thousands of
+  rebuilds and roommates depend on that box.
+- Checks: nix build .#checks.x86_64-linux.<name>
+  (names: nix eval .#checks.x86_64-linux --apply builtins.attrNames)
+  NOT `nix flake check` — it walks nixosConfigurations, so wonudesktop's throw
+  makes it red, AND it builds every check. See the comment on `checks`.
 - Secret edit (run from the secrets dir — the CLI resolves rules relative to cwd):
   cd hosts/wheezertbts/secrets      # server secrets
   cd hosts/frame-automata/secrets   # desktop secrets (samba-client.age)
@@ -41,7 +53,14 @@ host NOT administered by the person using it, NOT yet installed).
   modules/homelab-client.
   hardware-configuration.nix is a `throw` PLACEHOLDER until the machine is
   installed, so this host does not eval and `nix flake check` is red — expected,
-  not a bug. Users: `wonu` (theirs, wheel) + `admin` (Thomas's key from
+  not a bug. `nix flake check` walks nixosConfigurations on its own, so no
+  flake output can suppress it; build checks by name instead (see Commands).
+  When the real hardware scan lands: replace the file, `nix fmt` it, then add
+  wonudesktop to checks.host-* — CI derives its host list from there, so that
+  is the only edit. Do NOT "switch back to `nix flake check`": it BUILDS every
+  check, and four NixOS closures do not fit a CI runner's disk. Today's split
+  (evaluate hosts, build the rest) is the steady state.
+  Users: `wonu` (theirs, wheel) + `admin` (Thomas's key from
   keys.nix, wheel) with :22 open on tailscale0 ONLY — the estate's only
   workstation that opens ssh, because remote support is the whole point.
   LTS kernel (out-of-tree NVIDIA module), autoUpgrade operation = "boot" (a
@@ -60,8 +79,18 @@ host NOT administered by the person using it, NOT yet installed).
   Traceway, neither wantedBy multi-user) — keep BOTH off wonudesktop;
   a host's own systemPackages is for that machine alone (laptop:
   keyd; power.nix: powertop/turbostat; wonudesktop: heroic/lutris/protonup-qt).
-  Not in nixpkgs -> pkgs/<name>/ + an overlay line in the flake's `shared` module.
+  Not in nixpkgs -> pkgs/<name>/ + a line in the flake's `ourPackages` overlay.
+  That is the ONLY edit: packages, checks and CI all derive their lists from it.
 - site.nix + modules/notify.nix — shared by all four hosts; edit once, not four times
+- .github/workflows/ci.yml — three jobs (nixfmt, evaluate the three installed
+  hosts, build both packages). Each drives the flake's `checks`, so the rules
+  live in flake.nix and not in YAML. It does NOT build host closures: three
+  NixOS closures do not fit a GitHub runner's disk, so that stays a local gate
+  on frame-automata before a switch
+- The flake exports overlays.default, packages, checks, formatter and
+  devShells alongside nixosConfigurations. pkgs/* rides `ourPackages`, one
+  named overlay consumed both by `shared` (the hosts) and by overlays.default
+  (anyone else) — so there is no second definition to drift
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note

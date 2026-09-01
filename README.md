@@ -112,6 +112,7 @@ keeps `nix flake check` red for the whole repo.
 
 ```sh
 nixos-generate-config --show-hardware-config > hosts/frame-automata/hardware-configuration.nix
+nix fmt   # generate-config output is NOT nixfmt-clean; checks.formatting gates it
 ```
 
 **2. A password for `frame-automata`.** The account sets none of
@@ -367,6 +368,7 @@ unaffected). Install in **UEFI mode**: `modules/common` uses systemd-boot.
 ```sh
 nixos-generate-config --root /mnt          # from the installer
 # copy /mnt/etc/nixos/hardware-configuration.nix to hosts/wonudesktop/
+nix fmt   # generate-config output is NOT nixfmt-clean; checks.formatting gates it
 nixos-install --flake .#wonudesktop
 ```
 
