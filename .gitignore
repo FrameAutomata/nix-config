@@ -9,3 +9,6 @@ result-*
 *.ovpn
 *.conf.plaintext
 secrets-staging/
+
+# direnv / nix-direnv per-checkout state
+.direnv/

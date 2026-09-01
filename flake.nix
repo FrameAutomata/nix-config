@@ -43,6 +43,7 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       nixpkgs-workstation,
       agenix,
@@ -51,6 +52,34 @@
       ...
     }:
     let
+      # Every host here is x86_64. genAttrs rather than a flake-utils input:
+      # this is the whole of what that input would provide, and an input is a
+      # lockfile entry that has to be kept moving.
+      systems = [ "x86_64-linux" ];
+      forAllSystems = nixpkgs.lib.genAttrs systems;
+
+      # The two packages this repo carries that nixpkgs does not. Named and
+      # lifted out of `shared` rather than inlined there, so they are reachable
+      # from outside a system build: `nix build .#aurral` now iterates on the
+      # derivation directly, which is what packaging work needs. The hosts
+      # still receive them through `shared` exactly as before.
+      ourPackages = final: _prev: {
+        headroom = final.callPackage ./pkgs/headroom { };
+        aurral = final.callPackage ./pkgs/aurral { };
+      };
+
+      # Backs the packages/checks/formatter/devShells outputs only. The HOSTS
+      # do not use this — each builds these against its own nixpkgs via the
+      # overlay, so a workstation's headroom comes from nixpkgs-workstation.
+      # This is the one representative build for `nix build`, CI and nixpkgs
+      # iteration; it uses the server input because aurral is deployed from it.
+      pkgsFor =
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ ourPackages ];
+        };
+
       # Applied to every host. agenix rides the overlay rather than
       # agenix.packages: the latter is built from the `nixpkgs` input, which
       # would drag the server's closure (a second glibc, a second nix) onto a
@@ -62,10 +91,7 @@
           nixpkgs.overlays = [
             claude-code.overlays.default
             agenix.overlays.default
-            (final: _prev: {
-              headroom = final.callPackage ./pkgs/headroom { };
-              aurral = final.callPackage ./pkgs/aurral { };
-            })
+            ourPackages
           ];
           environment.systemPackages = [ pkgs.agenix ];
         };
@@ -138,5 +164,87 @@
           ];
         };
       };
+
+      # Consumable from outside this repo: another flake taking this one as an
+      # input gets aurral and headroom from
+      # `inputs.nix-config.overlays.default`. `shared` above applies the same
+      # value, so the hosts and any consumer are building the same expression.
+      overlays.default = ourPackages;
+
+      # `nix build .#aurral`. Packaging work is edit-build-repeat against one
+      # derivation, and before this output the only way to build either of
+      # these was to build a whole system closure that contained it.
+      packages = forAllSystems (system: {
+        inherit (pkgsFor system) aurral headroom;
+      });
+
+      # `nix fmt`. nixfmt is the RFC 166 formatter and the one nixpkgs CI
+      # enforces, so a file formatted here is already conformant when it gets
+      # copied into a nixpkgs PR. (nixfmt-rfc-style is an alias for it now.)
+      formatter = forAllSystems (system: (pkgsFor system).nixfmt);
+
+      # The gate, to be built one attr at a time.
+      #
+      # `nix flake check` itself is RED and stays red until wonudesktop is
+      # installed — it walks `nixosConfigurations` on its own, independently of
+      # this attrset, and hits that host's hardware-configuration.nix throw.
+      # Nothing here can suppress that; there is no per-output exclusion. So
+      # this attrset is what .github/workflows/ci.yml drives explicitly, e.g.
+      #   nix build .#checks.x86_64-linux.formatting
+      # Switch CI back to a plain `nix flake check` the day that host lands.
+      #
+      # host-* are the three machines that exist. Add wonudesktop to both this
+      # list and the CI eval loop at the same time.
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        {
+          inherit (self.packages.${system}) aurral headroom;
+          host-wheezertbts = self.nixosConfigurations.wheezertbts.config.system.build.toplevel;
+          host-frame-automata = self.nixosConfigurations.frame-automata.config.system.build.toplevel;
+          host-frame-automobile = self.nixosConfigurations.frame-automobile.config.system.build.toplevel;
+
+          # Keeps the tree nixfmt-clean. `${self}` is the flake source — every
+          # tracked file, no .git — so an edit anywhere re-runs this.
+          #
+          # The two hardware-configuration.nix files are covered too, and
+          # nixos-generate-config does NOT emit nixfmt-clean output: after
+          # regenerating one (wonudesktop's is still to come), run `nix fmt`
+          # before committing or this goes red on a file you did not hand-write.
+          formatting = pkgs.runCommandLocal "check-nixfmt" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
+            nixfmt --check $(find ${self} -name '*.nix')
+            touch $out
+          '';
+        }
+      );
+
+      # `nix develop`, or automatically via the .envrc — programs.direnv is
+      # already on in modules/workstation/dev-tools.nix, and nix-direnv
+      # GC-roots this closure so modules/workstation's nix.gc cannot collect a
+      # toolchain this checkout still wants.
+      #
+      # A shell rather than more systemPackages in dev-tools.nix: this is the
+      # toolchain for working ON nixpkgs, which happens in a checkout. It has
+      # no business in the system closure of every machine Thomas administers.
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        {
+          default = pkgs.mkShellNoCC {
+            packages = with pkgs; [
+              nixfmt # the nixpkgs house format; same binary `nix fmt` uses
+              nixpkgs-review # `nixpkgs-review pr <n>` — build what a PR rebuilds
+              nix-init # scaffold a derivation from an upstream URL
+              nurl # fetcher expression + hash for a repo URL
+              nix-update # bump version + hash in an existing derivation
+              nixpkgs-lint-community # catches what a nixpkgs reviewer would
+            ];
+          };
+        }
+      );
     };
 }
