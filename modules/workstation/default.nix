@@ -1,7 +1,12 @@
 # Interactive-machine base: desktop session, audio, bluetooth, gaming, and
 # store maintenance. Host-agnostic — a host adds hardware, users, and its own
 # system.autoUpgrade source.
-{ config, pkgs, ... }:
+#
+# This is every interactive machine, including the ones this repo is not
+# administered from. Thomas's editor/terminal/CLI layer is
+# modules/workstation/dev-tools.nix, and his Traceway databases are
+# dev-databases.nix; both are imported only by the two hosts he works on.
+{ pkgs, ... }:
 
 {
   services.xserver.enable = true;
@@ -37,20 +42,17 @@
   };
   programs.gamemode.enable = true;
 
-  # The shared workstation app set. Both hosts run the same Plasma/gaming/Claude
-  # stack, so this lives here rather than being duplicated in each host tree — a
-  # host's own systemPackages carries only what is true of that machine alone.
-  # claude-code and headroom come from the overlays the flake's `shared` module
-  # applies, so this module is only complete when composed with it.
+  # The app set every workstation gets, admin machine or not: a browser, an
+  # office suite, a GUI text editor, chat, and the hardware/gaming bits.
+  # Anything that is only useful when you also deploy this repo belongs in
+  # a dev-*.nix layer — that boundary is what lets a third workstation share
+  # this file.
   environment.systemPackages = with pkgs; [
     # hardware / gaming
     mangohud
     pciutils
     usbutils
-    # editors / terminal
-    neovim
-    zed-editor
-    ghostty
+    # editors
     kdePackages.kate
     # browsers
     vivaldi
@@ -62,33 +64,7 @@
     hunspell
     hunspellDicts.en_US
     hyphenDicts.en_US
-    # dev + homelab admin
-    gh
-    # Zed's Nix extension declares nil and nixd but downloads neither — it
-    # only `which`es them, so an uninstalled server is silently no server.
-    # nixd over nil for the NixOS option completion this repo is made of;
-    # ~/.config/zed/settings.json points it at the flake and disables nil.
-    nixd
-    claude-code
-    headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
-
-  # direnv + nix-direnv, so a checkout carrying an .envrc drops you into its
-  # dev shell on cd rather than everyone remembering to type `nix develop`.
-  #
-  # nix-direnv (on by default under this option) is the reason this is
-  # system-level rather than a per-project shell script: it caches each dev
-  # shell's closure under that project's .direnv/ and registers it as a GC
-  # root, so the nix.gc below cannot collect a toolchain a checkout still
-  # depends on. That failure is worth avoiding specifically — a pip venv built
-  # against a store python keeps a bare symlink into /nix/store, so a gc that
-  # takes the interpreter away surfaces later as an unrelated-looking missing
-  # .so rather than as anything pointing at the collection.
-  #
-  # Opt-in per project regardless: direnv ignores an .envrc until it is
-  # `direnv allow`ed. Needs a fresh login, since the shell hook is installed
-  # at session start.
-  programs.direnv.enable = true;
 
   # Nothing reclaims the store otherwise, and autoUpgrade adds a generation a
   # week. optimise hardlinks identical files between store paths.
@@ -108,47 +84,5 @@
     dates = "Wed 03:00";
     persistent = true;
     randomizedDelaySec = "30min";
-  };
-
-  # Weekly check for a newer NixOS stable release. NOTIFIES rather than
-  # switching: there is no rolling "nixos-stable" alias to follow, and a
-  # release hop carries breaking changes documented in the release notes.
-  # A user service so the notification reaches the Plasma session.
-  systemd.user.services.nixos-release-check = {
-    description = "Check whether a newer NixOS stable release is available";
-    startAt = "weekly";
-    serviceConfig.Type = "oneshot";
-    path = with pkgs; [
-      curl
-      gnugrep
-      gnused
-      coreutils
-      libnotify
-    ];
-    script = ''
-      set -eu
-      current="${config.system.nixos.release}"
-      newest=$(curl -sf --max-time 30 "https://nix-channels.s3.amazonaws.com/?delimiter=/" \
-        | grep -oE 'nixos-[0-9]{2}\.[0-9]{2}/' \
-        | sed 's#nixos-##; s#/##' \
-        | sort -V | tail -1) || exit 0
-      [ -n "$newest" ] || exit 0
-      if [ "$newest" != "$current" ] \
-         && [ "$(printf '%s\n%s\n' "$current" "$newest" | sort -V | tail -1)" = "$newest" ]; then
-        echo "NixOS $newest is available (running $current)"
-        # || true: no notification daemon (early login, SDDM greeter's own user
-        # manager) must not fail the unit under set -e
-        notify-send -u normal -i system-software-update \
-          "NixOS $newest is available" \
-          "Running $current. Read the release notes, then move this host to nixos-$newest and rebuild." || true
-      else
-        echo "Up to date: running $current, newest stable is $newest"
-      fi
-    '';
-  };
-
-  systemd.user.timers.nixos-release-check.timerConfig = {
-    Persistent = true;
-    RandomizedDelaySec = "6h";
   };
 }

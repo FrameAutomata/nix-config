@@ -1,5 +1,5 @@
 {
-  description = "NixOS configs — wheezertbts (homelab server), frame-automata (desktop), frame-automobile (laptop)";
+  description = "NixOS configs — wheezertbts (homelab server), frame-automata (desktop), frame-automobile (laptop), wonudesktop (second desktop)";
 
   inputs = {
     # The server's nixpkgs. Was pinned to f197f8e0c66a from 2026-07-25 because
@@ -115,6 +115,27 @@
             shared
           ]
           ++ claudeDesktop;
+        };
+
+        # The girlfriend's desktop (Ryzen 5800X3D / RTX 2070 Super). Same
+        # workstation nixpkgs as the other two, so all three interactive
+        # machines move together and a revision is never good on one and bad on
+        # another. It imports modules/workstation but none of its dev-*.nix
+        # layers: dev-tools.nix is Thomas's editor/CLI set and
+        # dev-databases.nix his Traceway databases, and this is not his machine.
+        #
+        # No agenix.nixosModules.default and no key in keys.nix — not as a
+        # standing decision the way frame-automobile's is, just nothing to
+        # decrypt yet. Enrolling a host key is step one of giving it the Samba
+        # shares (README), and that is when the module gets added.
+        #
+        # No claudeDesktop either: nobody here is running Cowork micro-VMs.
+        wonudesktop = nixpkgs-workstation.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/wonudesktop
+            shared
+          ];
         };
       };
     };
