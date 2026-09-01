@@ -1,4 +1,4 @@
-# nix-config — wheezertbts homelab + frame-automata desktop + frame-automobile laptop + wonudesktop
+# nix-config — wheezertbts homelab + frame-automata / frame-automobile / wonudesktop
 NixOS 26.05 flake. Four hosts: `wheezertbts` (live server; roommates depend on
 it), `frame-automata` (Thomas's desktop, admin workstation),
 `frame-automobile` (Thomas's laptop, no secrets on it) and `wonudesktop`
@@ -36,8 +36,9 @@ host NOT administered by the person using it, NOT yet installed).
   key in keys.nix, deliberately: its disk is unencrypted, so a host key there
   would be a decryption capability for anyone holding the laptop
 - hosts/wonudesktop/ — girlfriend's desktop; modules/workstation (NOT its
-  dev.nix) + modules/common/nvidia.nix + host-local gpu.nix (RTX 2070 Super:
-  open kernel modules, VRAM-preserving suspend) + modules/homelab-client.
+  dev-tools.nix / dev-databases.nix) + modules/common/nvidia.nix + host-local
+  gpu.nix (RTX 2070 Super: open kernel modules, VRAM-preserving suspend) +
+  modules/homelab-client.
   hardware-configuration.nix is a `throw` PLACEHOLDER until the machine is
   installed, so this host does not eval and `nix flake check` is red — expected,
   not a bug. Users: `wonu` (theirs, wheel) + `admin` (Thomas's key from
@@ -53,9 +54,11 @@ host NOT administered by the person using it, NOT yet installed).
 - modules/homelab/ — options + service modules (homelab.services.<name>)
 - Packages: modules/common = all four hosts; modules/workstation = all three
   workstations (the shared interactive app set — edit once, not thrice);
-  modules/workstation/dev.nix = the two hosts Thomas administers from (editors,
-  nixd, gh, claude-code, headroom, direnv, nixos-release-check) — keep this off
-  wonudesktop; a host's own systemPackages is for that machine alone (laptop:
+  the dev-*.nix layers = the two hosts Thomas administers from, opt-in per
+  host: dev-tools.nix (editors, nixd, gh, claude-code, headroom, direnv,
+  nixos-release-check) and dev-databases.nix (postgres/clickhouse for
+  Traceway, neither wantedBy multi-user) — keep BOTH off wonudesktop;
+  a host's own systemPackages is for that machine alone (laptop:
   keyd; power.nix: powertop/turbostat; wonudesktop: heroic/lutris/protonup-qt).
   Not in nixpkgs -> pkgs/<name>/ + an overlay line in the flake's `shared` module.
 - site.nix + modules/notify.nix — shared by all four hosts; edit once, not four times

@@ -35,9 +35,11 @@ sudo nixos-rebuild switch --rollback             # undo
 - `modules/common/` — host-agnostic base (locale, nix settings, ssh, gpu;
   `amdgpu.nix`, `intel-gpu.nix` and `nvidia.nix` are opt-in per host)
 - `modules/workstation/` — interactive base: Plasma, audio, gaming, nix gc.
-  Its `dev.nix` is the admin layer on top (editors, `nixd`, `gh`, `claude-code`,
-  direnv, the release check), imported only by the two hosts this repo is
-  deployed from
+  Two opt-in `dev-*.nix` layers sit on top, imported only by the hosts this
+  repo is deployed from: `dev-tools.nix` (editors, `nixd`, `gh`, `claude-code`,
+  direnv, the release check) and `dev-databases.nix` (PostgreSQL + ClickHouse
+  for Traceway). Anything true of *every* interactive machine stays in
+  `default.nix`
 - `modules/homelab-client/` — the *using* side: tailnet, ntfy alerts, mounts
 - `modules/notify.nix` — ntfy failure alerts, shared by server and clients
 - `site.nix` — facts both sides need (domain, LAN IP, topic, timezone)
@@ -302,13 +304,14 @@ move together and a bad revision is never true on one and false on another.
 What differs from `frame-automata`, which is otherwise the same class of
 machine:
 
-- **`modules/workstation` but not `modules/workstation/dev.nix`.** The Plasma /
-  audio / Steam / browser / LibreOffice base is shared by every interactive
-  machine; the editors, terminals, `nixd`, `gh`, `claude-code`, `headroom`,
-  direnv and the NixOS-release check moved into `dev.nix`, which only the two
-  hosts this repo is deployed from import. The split is admin-vs-not, not
-  desktop-vs-laptop, so there is still exactly one place to edit anything true
-  of all three.
+- **`modules/workstation`, but neither `dev-*.nix` layer.** The Plasma / audio
+  / Steam / browser / LibreOffice base is shared by every interactive machine;
+  the editors, terminals, `nixd`, `gh`, `claude-code`, `headroom`, direnv and
+  the NixOS-release check live in `dev-tools.nix`, and the Traceway databases
+  in `dev-databases.nix`. Both are imported per host, by the two machines this
+  repo is deployed from. The split is admin-vs-not, not desktop-vs-laptop, so
+  there is still exactly one place to edit anything true of all three
+  workstations.
 - **The LTS kernel** (`pkgs.linuxPackages`, 6.18) rather than
   `linuxPackages_latest` (7.2). The other two hosts have in-tree GPU drivers,
   so tracking mainline is free there. Here the NVIDIA module is an out-of-tree

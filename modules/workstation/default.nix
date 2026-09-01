@@ -4,7 +4,8 @@
 #
 # This is every interactive machine, including the ones this repo is not
 # administered from. Thomas's editor/terminal/CLI layer is
-# modules/workstation/dev.nix, imported only by the two hosts he works on.
+# modules/workstation/dev-tools.nix, and his Traceway databases are
+# dev-databases.nix; both are imported only by the two hosts he works on.
 { pkgs, ... }:
 
 {
@@ -44,7 +45,8 @@
   # The app set every workstation gets, admin machine or not: a browser, an
   # office suite, a GUI text editor, chat, and the hardware/gaming bits.
   # Anything that is only useful when you also deploy this repo belongs in
-  # dev.nix — that boundary is what lets a third workstation share this file.
+  # a dev-*.nix layer — that boundary is what lets a third workstation share
+  # this file.
   environment.systemPackages = with pkgs; [
     # hardware / gaming
     mangohud

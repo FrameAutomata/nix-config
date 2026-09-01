@@ -20,7 +20,7 @@ in
     ../../modules/workstation
     ../../modules/homelab-client
   ];
-  # No modules/workstation/dev.nix: that is the editors/CLI/release-check layer
+  # No modules/workstation/dev-tools.nix: that is the editors/CLI/release-check layer
   # for the machines this repo is deployed from, and none of it is this user's.
 
   networking.hostName = "wonudesktop";

@@ -9,6 +9,12 @@
 # interactive machine stays in modules/workstation/default.nix, so there is
 # still one place to edit it.
 #
+# Named to match its sibling dev-databases.nix, which takes the same opt-in
+# route for the same reason. Together they are the answer to "this belongs on
+# the machines Thomas works on, not on every workstation" — anything that grows
+# a third such layer should join the dev-*.nix family rather than leak into
+# default.nix.
+#
 # claude-code and headroom come from the overlays the flake's `shared` module
 # applies, so this module is only complete when composed with it.
 { config, pkgs, ... }:
