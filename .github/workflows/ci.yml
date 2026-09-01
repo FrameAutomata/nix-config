@@ -36,10 +36,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# No step here uses the token, so read-only costs nothing — and it is not the
+# repository default on repos created before that default flipped. The action
+# refs above are floating, which is exactly when least privilege matters.
+permissions:
+  contents: read
+
 jobs:
   format:
     name: nixfmt
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
@@ -50,6 +57,7 @@ jobs:
   eval:
     name: evaluate hosts
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main
@@ -71,6 +79,7 @@ jobs:
   packages:
     name: build packages
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@main

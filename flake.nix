@@ -68,6 +68,18 @@
         aurral = final.callPackage ./pkgs/aurral { };
       };
 
+      # The single list the packages and checks outputs both select with.
+      # attrNames does not force the values, so the dummy arguments are never
+      # looked at. Deriving the names and then selecting from the real,
+      # overlaid pkgs is deliberate: applying the overlay as `ourPackages pkgs
+      # pkgs` would pass the final package set as `prev`, so the first
+      # `prev.foo.overrideAttrs`-shaped entry anyone adds — the normal way to
+      # carry a patch — would resolve `prev` to the already-overridden
+      # attribute and hit infinite recursion. The hosts would keep building,
+      # since they go through a real fixpoint, making it look like a broken
+      # output rather than a broken overlay.
+      ourPackageNames = builtins.attrNames (ourPackages { } { });
+
       # Backs the packages/checks/formatter/devShells outputs only. The HOSTS
       # do not use this — each builds these against its own nixpkgs via the
       # overlay, so a workstation's headroom comes from nixpkgs-workstation.
@@ -90,6 +102,12 @@
         import nixpkgs {
           inherit system;
           overlays = [ ourPackages ];
+          # Matches modules/common/default.nix, which sets this for all four
+          # hosts. Without it the outputs evaluate under a DIFFERENT nixpkgs
+          # config than every machine: the day something here gains an unfree
+          # dependency, `nixos-rebuild` succeeds on all four hosts while
+          # `nix build .#<pkg>`, `nix develop` and CI fail on the licence.
+          config.allowUnfree = true;
         }
       );
       pkgsFor = system: pkgsBySystem.${system};
@@ -189,23 +207,20 @@
       # derivation, and before this output the only way to build either of
       # these was to build a whole system closure that contained it.
       #
-      # Applying `ourPackages` to the already-overlaid pkgs rather than
-      # re-listing the names keeps ONE list: a third package added to
-      # ourPackages appears here, in checks, and in CI (which reads these
-      # attrNames) without another edit. The two arguments are the standard
-      # final/prev overlay pair.
-      packages = forAllSystems (
-        system:
-        let
-          pkgs = pkgsFor system;
-        in
-        ourPackages pkgs pkgs
-      );
+      # Selecting by ourPackageNames rather than re-listing keeps ONE list: a
+      # third package added to ourPackages appears here, in checks, and in CI
+      # (which reads these attrNames) with no further edit.
+      packages = forAllSystems (system: nixpkgs.lib.getAttrs ourPackageNames (pkgsFor system));
 
       # `nix fmt`. nixfmt is the RFC 166 formatter and the one nixpkgs CI
       # enforces, so a file formatted here is already conformant when it gets
-      # copied into a nixpkgs PR. (nixfmt-rfc-style is an alias for it now.)
-      formatter = forAllSystems (system: (pkgsFor system).nixfmt);
+      # copied into a nixpkgs PR.
+      #
+      # nixfmt-tree (nixfmt behind treefmt), NOT bare nixfmt: `nix fmt` with no
+      # arguments passes NO arguments through, and bare nixfmt then reads
+      # stdin — so it formats nothing and, on a terminal, blocks forever.
+      # The tree wrapper is what makes the documented `nix fmt` walk the repo.
+      formatter = forAllSystems (system: (pkgsFor system).nixfmt-tree);
 
       # The gate. CI drives these by name; see .github/workflows/ci.yml.
       #
@@ -236,8 +251,8 @@
             fileset = lib.fileset.fileFilter (f: f.hasExt "nix") ./.;
           };
         in
-        {
-          inherit (self.packages.${system}) aurral headroom;
+        self.packages.${system}
+        // {
           host-wheezertbts = self.nixosConfigurations.wheezertbts.config.system.build.toplevel;
           host-frame-automata = self.nixosConfigurations.frame-automata.config.system.build.toplevel;
           host-frame-automobile = self.nixosConfigurations.frame-automobile.config.system.build.toplevel;
@@ -255,12 +270,22 @@
           # regenerating one (wonudesktop's is still to come), run `nix fmt`
           # before committing or this goes red on a file you did not hand-write.
           #
-          # nativeBuildInputs takes self.formatter rather than pkgs.nixfmt so
-          # `nix fmt` and this check can never enforce different things.
+          # Runs self.formatter itself — the same derivation `nix fmt` runs —
+          # so the two genuinely cannot enforce different things. --ci is
+          # treefmt's no-cache + fail-on-change mode.
+          #
+          # Copied to a writable dir first, and cd'd into, for one reason:
+          # treefmt reports paths relative to its tree root. Run against the
+          # store path directly it would name
+          # /nix/store/<hash>-source/modules/... in a red build, which is not a
+          # path anyone can open.
           formatting =
             pkgs.runCommandLocal "check-nixfmt" { nativeBuildInputs = [ self.formatter.${system} ]; }
               ''
-                nixfmt --check $(find ${nixfmtSources} -name '*.nix')
+                cp -r ${nixfmtSources} tree
+                chmod -R u+w tree
+                cd tree
+                treefmt --ci --tree-root .
                 touch $out
               '';
         }
