@@ -9,18 +9,14 @@
 { pkgs, ... }:
 
 {
+  # Audio is modules/common/audio.nix rather than inline: the server's TV seat
+  # (hosts/wheezertbts/tv.nix) wants the same PipeWire stack and none of the
+  # rest of this file.
+  imports = [ ../common/audio.nix ];
+
   services.xserver.enable = true;
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
-
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-  };
 
   # powerOnBoot and Policy.AutoEnable are left at their defaults — both are
   # already true, and AutoEnable is derived from powerOnBoot upstream.
@@ -42,8 +38,15 @@
   };
   programs.gamemode.enable = true;
 
+  # Stated beside Steam rather than in modules/common/audio.nix, the same way
+  # intel-gpu.nix states hardware.graphics.enable32Bit: what needs a 32-bit
+  # audio path is Proton/Wine, not speakers. Keeping it here is what keeps an
+  # i686 PipeWire closure off the server, which shares that audio module.
+  services.pipewire.alsa.support32Bit = true;
+
   # The app set every workstation gets, admin machine or not: a browser, an
-  # office suite, a GUI text editor, chat, and the hardware/gaming bits.
+  # office suite, a GUI text editor, chat, a music client, and the
+  # hardware/gaming bits.
   # Anything that is only useful when you also deploy this repo belongs in
   # a dev-*.nix layer — that boundary is what lets a third workstation share
   # this file.
@@ -59,6 +62,17 @@
     brave
     # chat
     discord
+    # music
+    #
+    # Gapless Subsonic/Jellyfin client on mpv; whichever server it logs into
+    # is per-user state, not config here.
+    #
+    # Not `supersonic-wayland`: that variant is a separate override in this
+    # nixpkgs, but a later one folds it back into `supersonic` and makes the
+    # separate name throw. The plain attribute survives that upgrade and gains
+    # Wayland with it; until then it runs on XWayland under Plasma, which for
+    # an audio player costs only HiDPI crispness.
+    supersonic
     # productivity
     libreoffice-qt
     hunspell

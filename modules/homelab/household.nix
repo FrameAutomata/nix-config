@@ -29,6 +29,8 @@ let
     "household"
     "homes"
     "printers"
+    # the living-room kiosk account (hosts/wheezertbts/tv.nix)
+    "tv"
   ];
 in
 {

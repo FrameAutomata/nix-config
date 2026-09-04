@@ -1,5 +1,6 @@
 # The NVIDIA driver stack, shared by the two hosts with an NVIDIA card:
-# wheezertbts (GTX 1650, headless, NVENC transcoding for Jellyfin) and
+# wheezertbts (GTX 1650, NVENC transcoding for Jellyfin, and since the TV seat
+# also this card's HDMI driving the living room — hosts/wheezertbts/tv.nix) and
 # wonudesktop (RTX 2070 Super, a desktop that runs games). Only the parts both
 # want live here — the gaming-side additions are hosts/wonudesktop/gpu.nix.
 #

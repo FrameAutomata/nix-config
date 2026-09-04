@@ -8,6 +8,7 @@ in
   imports = [
     ./hardware-configuration.nix
     ./filesystems.nix
+    ./tv.nix # living-room TV seat on the GTX 1650's HDMI
     ../../modules/common
     ../../modules/common/nvidia.nix
     ../../modules/homelab
