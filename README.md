@@ -25,7 +25,8 @@ sudo nixos-rebuild switch --rollback             # undo
 
 ## Structure
 
-- `hosts/wheezertbts/` — server config + its agenix secrets
+- `hosts/wheezertbts/` — server config + its agenix secrets; `tv.nix` is the
+  living-room TV seat (cage kiosk + Jellyfin Desktop on the GTX 1650's HDMI)
 - `hosts/frame-automata/` — desktop config + its own agenix secrets; also holds
   the `admin` key that edits *both* sets, so it is the recovery path if either
   host key rotates
@@ -33,8 +34,10 @@ sudo nixos-rebuild switch --rollback             # undo
 - `hosts/wonudesktop/` — second desktop (5800X3D / RTX 2070 Super), someone
   else's daily driver; NVIDIA gaming layer in its own `gpu.nix`, no secrets yet
 - `modules/common/` — host-agnostic base (locale, nix settings, ssh, gpu;
-  `amdgpu.nix`, `intel-gpu.nix` and `nvidia.nix` are opt-in per host)
-- `modules/workstation/` — interactive base: Plasma, audio, gaming, nix gc.
+  `amdgpu.nix`, `intel-gpu.nix`, `nvidia.nix` and `audio.nix` are opt-in per
+  host — `audio.nix` is the PipeWire stack the workstations and the TV seat share)
+- `modules/workstation/` — interactive base: Plasma, gaming, nix gc (audio via
+  `modules/common/audio.nix`).
   Two opt-in `dev-*.nix` layers sit on top, imported only by the hosts this
   repo is deployed from: `dev-tools.nix` (editors, `nixd`, `gh`, `claude-code`,
   direnv, the release check) and `dev-databases.nix` (PostgreSQL + ClickHouse
@@ -80,6 +83,139 @@ encrypted. Backups (Phase 7) include private areas only opt-in, but
 filesystem snapshots cover everything and retain deleted files for the
 retention window. Anyone wanting admin-proof privacy should layer
 client-side encryption (e.g. Cryptomator) over their private share.
+
+## Living-room TV (`wheezertbts` → HDMI)
+
+The server's GTX 1650 has an HDMI port and the living-room TV is on the other
+end of it. `hosts/wheezertbts/tv.nix` makes the box boot straight into
+Jellyfin: `cage`, a Wayland compositor that shows exactly one window, takes
+tty1 and runs Jellyfin Desktop in its 10-foot layout as a dedicated locked
+user `tv`. No desktop, no login screen, nothing else on the panel. It is
+host-local because there is one TV: a `modules/homelab/services/` module would
+parameterise the user, program, sink ranking and VT for no second consumer, and
+hand anyone enabling it a unit that seizes tty1. It is deliberately *not*
+`modules/workstation` either, which is a desktop for a person at a desk. The one
+thing both need, PipeWire, moved to
+`modules/common/audio.nix`.
+
+Jellyfin Desktop loads the web client **from the server** (its bundled page is
+only a server-address prompt), and that is what makes the Netflix-style "Who's
+watching?" gate possible: the Bonfire (JellyProfiles) plugin injects its script
+into the web client the server serves, so it appears on the TV, in the phone
+app and in a browser alike — everywhere except the native TV apps. Playback is
+mpv with NVDEC, and the session is an ordinary Jellyfin client, so a phone's
+**Play on** target works as a remote with no hardware at all.
+
+What a deploy does and does not do. `cage-tty1` is `restartIfChanged = false`,
+so a switch never kills a viewing session: a new Jellyfin Desktop arrives at
+the next `sudo systemctl restart cage-tty1` (when nobody is watching) or
+reboot. Deploy **over ssh, never from tty1** — activation starts `cage-tty1`,
+which takes tty1 from `getty`; the console is on tty2 (Ctrl+Alt+F2, cage runs
+with `-s` so VT switching works). `graphical.target` becomes the default
+target, an admin ssh login now gets PipeWire's user sockets (the daemon
+itself stays socket-activated and does not spawn), and logind
+ignores the power button: roommates are within reach of the box now, the TV's
+remote is the off switch, and ssh administers the server. Immediate escape
+without a rollback:
+
+```sh
+sudo systemctl stop cage-tty1 && sudo systemctl start getty@tty1
+
+# and if it gave up after ten failed starts in an hour (ntfy will have said so):
+sudo systemctl reset-failed cage-tty1 && sudo systemctl start cage-tty1
+```
+
+After a deploy: `systemctl status cage-tty1` (if inactive, `sudo systemctl
+start cage-tty1` — `graphical.target` only becomes the default at boot);
+`journalctl -u cage-tty1 -b`, where "could not load the Qt platform plugin"
+means the Wayland QPA did not come up (switch the session to `--platform
+xcb`) and "no input devices" means the env var did not reach cage;
+`loginctl list-sessions` shows `tv` on seat0. Audio:
+
+```sh
+sudo -u tv env XDG_RUNTIME_DIR=/run/user/$(id -u tv) wpctl status
+```
+
+should list the HDMI node as the default sink. It exists only while the TV is
+on, and if the onboard HDA turns out to expose an HDMI sink of its own the
+regex in `tv.nix` matches both — narrow it to the name `wpctl` shows. Knobs if
+the compositor will not start on the proprietary driver, in order:
+`WLR_NO_HARDWARE_CURSORS=1` in `services.cage.environment`, swapping
+that block's `QT_QPA_PLATFORM` for `--platform xcb` on the wrapper's exec
+line, `--disable-gpu`, and `hardware.nvidia.open = true`
+(Turing is on upstream's recommended side; it needs a reboot).
+
+### First run — none of this is declarative
+
+**1. A Jellyfin account for the TV.** Dashboard → Users → add `livingroom`:
+not an administrator, password set, "Allow remote connections" unticked (it
+only ever connects from `127.0.0.1`), optionally hidden from login pages. If
+the TV is an OLED, set a screensaver in its display settings — the box never
+sends "no signal", so the TV will not switch itself off.
+
+**2. On the TV.** Server `http://127.0.0.1:8096`, straight to Jellyfin. The
+`jellyfin.` vhost resolves on this box too (`nginx.nix` pins every internal
+name to the LAN IP), but that path goes through the proxy's TLS and ACL for
+nothing. Log in as `livingroom`, remember. Client state lives in
+`/home/tv/.local/share/jellyfin-desktop/`; it is not backed up, and re-entering
+the URL is the whole recovery.
+
+**3. Bonfire.** Dashboard → Plugins → Repositories → add
+`https://ahouseofbards.github.io/Bonfire-JellyProfiles/manifest.json` →
+Catalog → install → `sudo systemctl restart jellyfin`. Plugin and config land
+in `/var/lib/jellyfin/plugins`, already inside `backup.statePaths`.
+
+**4. Profiles.** Set `livingroom`'s switcher to the full-screen "Who's
+Watching?" mode, one profile per roommate, PINs optional. Leave "bypass PIN on
+own network" **off**: the TV always connects from `127.0.0.1`, so bypass would
+make every PIN moot on the TV. Write the emergency disable code down somewhere
+safe. Check on first run that the gate renders inside the `--tv` layout — both
+Bonfire and Jellyfin Desktop inject JS; Bonfire lists Jellyfin Media Player as
+supported.
+
+**5. Music.** Dashboard → Libraries → Add → content type Music, folder
+`/mnt/media/Music`. Lidarr writes that tree and Navidrome reads it, both in
+group `media`, and the `jellyfin` user is already in `media`, so nothing in
+the config changes. Turn the internet metadata fetchers **off** for this
+library: Lidarr already tags files and drops folder art, and Jellyfin must only
+ever read here. Give `livingroom` access; Bonfire's per-profile library access
+decides which profiles see it. Jellyfin becomes a second catalog of the same
+files — favourites, play counts and playlists do not sync with Navidrome,
+which stays the music server for phones.
+
+**6. Input, cheapest first.** Nothing, via **Play on** in the phone's Jellyfin
+app; any USB / 2.4 GHz / Bluetooth keyboard or air-mouse (the TV layout is
+arrow-key driven); an SDL2 gamepad; a Pulse-Eight USB-CEC adapter for the TV's
+own remote (the 1650 has no CEC line; Jellyfin Desktop is built with libcec).
+Whether the server has Bluetooth is unknown — if it does,
+`hardware.bluetooth.enable = true` in `tv.nix` and pair over ssh.
+
+### The trade-offs, stated once
+
+- **Profiles under one shared account** keep TV watch history separate from a
+  roommate's personal Jellyfin account (phones, the Jellyseerr login). The
+  alternative — each roommate signing their own account in on the TV — gives
+  one history but no gate.
+- **No HDR from Jellyfin Desktop, under any compositor.** Its mpv output is
+  composited through Qt Quick, so HDR titles play tone-mapped to SDR (upstream
+  issue #523, open since 2023). True HDR on Linux is a standalone mpv
+  (`vo=gpu-next` with `target-colorspace-hint`) under an HDR-capable
+  compositor — sway with its Vulkan renderer, or KWin — glued to Jellyfin by
+  `jellyfin-mpv-shim` as a **Play on** target, browsing from the phone. The
+  shakiest link is wlroots' Vulkan renderer on the proprietary NVIDIA driver,
+  and nothing found proves it on this card, so no sway config gets written on
+  speculation. The spike that decides, ad hoc on the server: stop `cage-tty1`,
+  start sway as `tv` with `WLR_RENDERER=vulkan`, `output * hdr on`,
+  `render_bit_depth 10` and a mode the HDMI 2.0b link carries at 10-bit
+  (`3840x2160@30Hz` or `1920x1080@60Hz`), then play an HDR10 sample with
+  `mpv --vo=gpu-next --target-colorspace-hint=yes
+  --target-colorspace-hint-mode=source --hwdec=nvdec`. Pass means the TV's own
+  overlay says HDR/PQ and the picture is not washed out; only then does cage
+  become sway with mpv-shim in the session. If sway refuses the renderer, the
+  fallbacks are a Plasma session (KWin HDR is the most-reported working path
+  on NVIDIA) or a streaming stick for HDR with the kiosk staying SDR. Kodi is
+  out either way: HDR only on its GBM backend, no NVDEC, and its own community
+  calls NVIDIA + GBM + HDR unsupported.
 
 ## Credits
 

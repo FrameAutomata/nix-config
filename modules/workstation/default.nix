@@ -9,18 +9,14 @@
 { pkgs, ... }:
 
 {
+  # Audio is modules/common/audio.nix rather than inline: the server's TV seat
+  # (hosts/wheezertbts/tv.nix) wants the same PipeWire stack and none of the
+  # rest of this file.
+  imports = [ ../common/audio.nix ];
+
   services.xserver.enable = true;
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
-
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-  };
 
   # powerOnBoot and Policy.AutoEnable are left at their defaults — both are
   # already true, and AutoEnable is derived from powerOnBoot upstream.
@@ -41,6 +37,12 @@
     protontricks.enable = true;
   };
   programs.gamemode.enable = true;
+
+  # Stated beside Steam rather than in modules/common/audio.nix, the same way
+  # intel-gpu.nix states hardware.graphics.enable32Bit: what needs a 32-bit
+  # audio path is Proton/Wine, not speakers. Keeping it here is what keeps an
+  # i686 PipeWire closure off the server, which shares that audio module.
+  services.pipewire.alsa.support32Bit = true;
 
   # The app set every workstation gets, admin machine or not: a browser, an
   # office suite, a GUI text editor, chat, and the hardware/gaming bits.

@@ -39,6 +39,19 @@ host NOT administered by the person using it, NOT yet installed).
 
 ## Map
 - hosts/wheezertbts/ — server config + its secrets
+  tv.nix = the living-room TV seat: cage kiosk on tty1 running
+  `jellyfin-desktop --tv --fullscreen` as the locked user `tv` (no password,
+  no groups, not a household member; do NOT `passwd tv` — the handle is
+  reserved in household.nix), HDMI ranked as the default sink via a
+  wireplumber rule, power key ignored, cage-tty1 registered for ntfy failure
+  pushes. Host-local because there is ONE TV, not because it joins no
+  registry: a service module would parameterise user/program/sink/VT for zero
+  second consumers and hand anyone enabling it a unit that seizes tty1.
+  NOT modules/workstation. Profiles = the Bonfire plugin installed in the
+  Jellyfin dashboard (manual, README) — works because Jellyfin Desktop loads
+  the web client from the server. cage-tty1 is restartIfChanged=false: a
+  switch never kills a viewing session; deploy OVER SSH, never from tty1
+  (activation starts cage-tty1, which conflicts getty@tty1; console -> tty2)
 - hosts/frame-automata/ — desktop; modules/workstation + modules/homelab-client;
   has its own secrets/ dir. keys.nix (repo root) holds admin + one key per host;
   each host's secrets name only admin + that host, so neither can read the
@@ -71,6 +84,10 @@ host NOT administered by the person using it, NOT yet installed).
 - All three workstations share the nixpkgs-workstation input; the server has its own
   nixpkgs. Never `nix flake update` bare — it moves everything. Update by name.
 - modules/homelab/ — options + service modules (homelab.services.<name>)
+- modules/common/default.nix is the all-hosts base; the files beside it
+  ({nvidia,intel-gpu,amdgpu,audio}.nix) are opt-in per host. audio.nix =
+  PipeWire, imported by modules/workstation AND hosts/wheezertbts/tv.nix —
+  edit once, not in both
 - Packages: modules/common = all four hosts; modules/workstation = all three
   workstations (the shared interactive app set — edit once, not thrice);
   the dev-*.nix layers = the two hosts Thomas administers from, opt-in per
@@ -94,6 +111,21 @@ host NOT administered by the person using it, NOT yet installed).
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
+Living-room TV (hosts/wheezertbts/tv.nix, 2026-09-02): built and
+closure-verified, NOT yet deployed — the laptop holds no ssh key, so the
+switch runs from frame-automata. Structure and deploy rules are in the Map
+entry; the runbook, the fallback-knob ladder and the trade-offs are README
+"Living-room TV" and are not repeated here. PENDING MANUAL (all in that
+README section): Jellyfin account `livingroom`, first-run server URL, the
+Bonfire install, profiles with "bypass PIN on own network" OFF, a read-only
+Music library on /mnt/media/Music, an input device decision. HDR: Jellyfin
+Desktop cannot output it at all (mpv composited through Qt Quick, upstream
+#523), so titles play tone-mapped SDR. Do NOT build a sway /
+jellyfin-mpv-shim HDR path on speculation — the README's spike decides
+first, and wlroots on the proprietary NVIDIA 595 is the unknown it tests.
+Post-deploy tuning left open deliberately: cage-tty1 has no MemoryMax and
+no CPUWeight, because the right numbers need a running kiosk to measure.
+
 Phase 7 complete: btrbk hourly snapshots of the pool root (subvolume ".",
 ladder 24h/7d/4w) into /mnt/media/.snapshots; restic nightly (04:15,
 deliberately non-Persistent — no catch-up stop window at boot) to the
