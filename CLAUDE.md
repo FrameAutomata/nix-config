@@ -118,7 +118,9 @@ entry; the runbook, the fallback-knob ladder and the trade-offs are README
 "Living-room TV" and are not repeated here. PENDING MANUAL (all in that
 README section): Jellyfin account `livingroom`, first-run server URL, the
 Bonfire install, profiles with "bypass PIN on own network" OFF, a read-only
-Music library on /mnt/media/Music, an input device decision. HDR: Jellyfin
+Music library on /mnt/media/Music. FUTURE, not bought: an air-mouse — until
+then Play on is the remote; do NOT pre-add cursor config for it, the
+cursor-theme lines tv.nix needs on arrival are in README step 6. HDR: Jellyfin
 Desktop cannot output it at all (mpv composited through Qt Quick, upstream
 #523), so titles play tone-mapped SDR. Do NOT build a sway /
 jellyfin-mpv-shim HDR path on speculation — the README's spike decides
