@@ -32,6 +32,10 @@
     wget
     git
     tmux
+    # The 5 KiB terminfo output, not the terminal. Ghostty (dev-tools.nix)
+    # sends TERM=xterm-ghostty over ssh, and a host without the entry breaks
+    # less and nano in that session — agenix edits on the server included.
+    ghostty.terminfo
   ];
 
   # Running the daemon is base infrastructure; which interfaces answer on :22
