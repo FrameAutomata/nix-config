@@ -190,6 +190,24 @@ own remote (the 1650 has no CEC line; Jellyfin Desktop is built with libcec).
 Whether the server has Bluetooth is unknown — if it does,
 `hardware.bluetooth.enable = true` in `tv.nix` and pair over ssh.
 
+**Future: an air-mouse — not bought yet.** Until it arrives, **Play on** is the
+remote. A USB-dongle air-mouse is a plain HID keyboard and mouse and needs no
+driver, but it does need one config change when it lands: this box has no
+cursor theme, so the pointer falls back to libwayland-cursor's small built-in
+arrow — invisible from the sofa. Add to `services.cage.environment` in
+`tv.nix`:
+
+```nix
+XCURSOR_PATH = "${pkgs.adwaita-icon-theme}/share/icons";
+XCURSOR_THEME = "Adwaita";
+XCURSOR_SIZE = "72"; # a size Adwaita ships natively; 96 is the next one up
+```
+
+`XCURSOR_PATH` has to be spelled out because nothing on a server exports the
+session variables a desktop would. A switch never restarts the kiosk, so follow
+it with `sudo systemctl restart cage-tty1`. Keep `WLR_LIBINPUT_NO_DEVICES`
+regardless: a pulled dongle or a dead battery must not stop the TV coming up.
+
 ### The trade-offs, stated once
 
 - **Profiles under one shared account** keep TV watch history separate from a
