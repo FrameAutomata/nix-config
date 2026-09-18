@@ -39,19 +39,26 @@ host NOT administered by the person using it, NOT yet installed).
 
 ## Map
 - hosts/wheezertbts/ — server config + its secrets
-  tv.nix = the living-room TV seat: cage kiosk on tty1 running
-  `jellyfin-desktop --tv --fullscreen` as the locked user `tv` (no password,
-  no groups, not a household member; do NOT `passwd tv` — the handle is
-  reserved in household.nix), HDMI ranked as the default sink via a
-  wireplumber rule, power key ignored, cage-tty1 registered for ntfy failure
-  pushes. Host-local because there is ONE TV, not because it joins no
-  registry: a service module would parameterise user/program/sink/VT for zero
-  second consumers and hand anyone enabling it a unit that seizes tty1.
-  NOT modules/workstation. Profiles = the Bonfire plugin installed in the
-  Jellyfin dashboard (manual, README) — works because Jellyfin Desktop loads
-  the web client from the server. cage-tty1 is restartIfChanged=false: a
-  switch never kills a viewing session; deploy OVER SSH, never from tty1
-  (activation starts cage-tty1, which conflicts getty@tty1; console -> tty2)
+  tv.nix = the living-room TV seat: the `tv-seat` unit runs sway on tty1 as
+  the locked user `tv` (no password, no groups, not a household member; do NOT
+  `passwd tv` — the handle is reserved in household.nix), and sway starts BOTH
+  `jellyfin-desktop --tv --fullscreen` (browsing + the Bonfire gate) and
+  `jellyfin-mpv-shim` (HDR playback, cast from a phone). HDMI ranked as the
+  default sink via a wireplumber rule, power key ignored, tv-seat registered
+  for ntfy failure pushes. It was cage until 2026-09-17; cage has NO
+  colour-management code, so HDR was unreachable under it. WLR_RENDERER=vulkan
+  is load-bearing (GLES2 has no output colour transforms). HDR is NOT left on:
+  10-bit 4K fits 24/30Hz but not 60Hz, so mpv-shim's pre_media_cmd/stop_cmd/
+  media_ended_cmd hooks swap the output to 4K24+HDR per film and back.
+  The unit owns its own PAM service (tv-seat, allowNullPassword+startSession)
+  since cage's went with cage. mpv-shim's conf.json/mpv.conf are installed by
+  ExecStartPre from the store on every start — its cred.json is NOT declarable
+  (interactive login, README). Host-local because there is ONE TV, not because
+  it joins no registry: a service module would parameterise user/clients/sink/
+  output/modes/VT for zero second consumers and hand anyone enabling it a unit
+  that seizes tty1. NOT modules/workstation. tv-seat is restartIfChanged=false:
+  a switch never kills a viewing session; deploy OVER SSH, never from tty1
+  (activation starts tv-seat, which conflicts getty@tty1; console -> tty2)
 - hosts/frame-automata/ — desktop; modules/workstation + modules/homelab-client;
   has its own secrets/ dir. keys.nix (repo root) holds admin + one key per host;
   each host's secrets name only admin + that host, so neither can read the
@@ -111,22 +118,28 @@ host NOT administered by the person using it, NOT yet installed).
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
-Living-room TV (hosts/wheezertbts/tv.nix, 2026-09-02): built and
-closure-verified, NOT yet deployed — the laptop holds no ssh key, so the
-switch runs from frame-automata. Structure and deploy rules are in the Map
-entry; the runbook, the fallback-knob ladder and the trade-offs are README
-"Living-room TV" and are not repeated here. PENDING MANUAL (all in that
-README section): Jellyfin account `livingroom`, first-run server URL, the
-Bonfire install, profiles with "bypass PIN on own network" OFF, a read-only
-Music library on /mnt/media/Music. FUTURE, not bought: an air-mouse — until
-then Play on is the remote; do NOT pre-add cursor config for it, the
-cursor-theme lines tv.nix needs on arrival are in README step 6. HDR: Jellyfin
-Desktop cannot output it at all (mpv composited through Qt Quick, upstream
-#523), so titles play tone-mapped SDR. Do NOT build a sway /
-jellyfin-mpv-shim HDR path on speculation — the README's spike decides
-first, and wlroots on the proprietary NVIDIA 595 is the unknown it tests.
-Post-deploy tuning left open deliberately: cage-tty1 has no MemoryMax and
-no CPUWeight, because the right numbers need a running kiosk to measure.
+Living-room TV: the cage kiosk IS deployed (2026-09-14, running). The sway
+rewrite in this branch is built and closure-verified, NOT yet deployed.
+Structure and deploy rules are in the Map entry; the runbook, the
+fallback-knob ladder and the trade-offs are README "Living-room TV" and are
+not repeated here. HDR was PROVEN on the box on 2026-09-17 before any of it
+was written: sway 1.12 + wlroots Vulkan on the proprietary NVIDIA 595.71.05
+enabled HDR on the output and played a 4K HDR10 remux. The README's spike is
+therefore spent — do not re-run it, and do not "simplify" WLR_RENDERER away.
+PENDING MANUAL (all in that README section): Jellyfin account `livingroom`,
+first-run server URL, the Bonfire install, profiles with "bypass PIN on own
+network" OFF, a read-only Music library on /mnt/media/Music, and mpv-shim's
+interactive login (cred.json, step 7 — do it with tv-seat stopped).
+The TV's own gate: Samsung "Input Signal Plus" must be ON for that input or
+the link caps at 300 MHz and no 10-bit 4K mode fits — and it RESETS when
+inputs are switched, so check it first when HDR stops working.
+FUTURE, not bought: an air-mouse — until then Play on is the remote; do NOT
+pre-add cursor config for it, the cursor-theme lines tv.nix needs on arrival
+are in README step 6. Jellium (the unofficial CEF client) would merge the two
+clients into one and does HDR, but it has no releases and no nixpkgs package:
+a candidate, not a plan. Post-deploy tuning left open deliberately: tv-seat
+has no MemoryMax and no CPUWeight, because the right numbers need a running
+seat to measure.
 
 Phase 7 complete: btrbk hourly snapshots of the pool root (subvolume ".",
 ladder 24h/7d/4w) into /mnt/media/.snapshots; restic nightly (04:15,

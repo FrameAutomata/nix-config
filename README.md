@@ -26,7 +26,8 @@ sudo nixos-rebuild switch --rollback             # undo
 ## Structure
 
 - `hosts/wheezertbts/` — server config + its agenix secrets; `tv.nix` is the
-  living-room TV seat (cage kiosk + Jellyfin Desktop on the GTX 1650's HDMI)
+  living-room TV seat (sway on tty1 running Jellyfin Desktop and mpv-shim,
+  with HDR, on the GTX 1650's HDMI)
 - `hosts/frame-automata/` — desktop config + its own agenix secrets; also holds
   the `admin` key that edits *both* sets, so it is the recovery path if either
   host key rotates
@@ -88,15 +89,24 @@ client-side encryption (e.g. Cryptomator) over their private share.
 
 The server's GTX 1650 has an HDMI port and the living-room TV is on the other
 end of it. `hosts/wheezertbts/tv.nix` makes the box boot straight into
-Jellyfin: `cage`, a Wayland compositor that shows exactly one window, takes
-tty1 and runs Jellyfin Desktop in its 10-foot layout as a dedicated locked
-user `tv`. No desktop, no login screen, nothing else on the panel. It is
-host-local because there is one TV: a `modules/homelab/services/` module would
-parameterise the user, program, sink ranking and VT for no second consumer, and
-hand anyone enabling it a unit that seizes tty1. It is deliberately *not*
-`modules/workstation` either, which is a desktop for a person at a desk. The one
-thing both need, PipeWire, moved to
+Jellyfin: `sway` takes tty1 as the dedicated locked user `tv` and starts two
+Jellyfin clients — Jellyfin Desktop in its 10-foot layout for browsing, and
+`jellyfin-mpv-shim`, which opens a window only when a phone casts to it. No
+desktop, no login screen, nothing else on the panel. It is host-local because
+there is one TV: a `modules/homelab/services/` module would parameterise the
+user, the clients, sink ranking, output name, both modes and the VT for no
+second consumer, and hand anyone enabling it a unit that seizes tty1. It is
+deliberately *not* `modules/workstation` either, which is a desktop for a
+person at a desk. The one thing both need, PipeWire, moved to
 `modules/common/audio.nix`.
+
+**Two clients because neither does both jobs.** Jellyfin Desktop is the only
+one that browses the library *on* the TV and carries the Bonfire profile gate,
+but it cannot output HDR (upstream #523). mpv-shim cannot browse, but its
+window is plain mpv with `vo=gpu-next`, which can. So browsing is Jellyfin
+Desktop and HDR playback is a cast — see "HDR" below. This replaced `cage`,
+which drove the TV until 2026-09-17: cage has no colour-management code at
+all, so nothing under it could ever reach HDR.
 
 Jellyfin Desktop loads the web client **from the server** (its bundled page is
 only a server-address prompt), and that is what makes the Netflix-style "Who's
@@ -106,12 +116,11 @@ app and in a browser alike — everywhere except the native TV apps. Playback is
 mpv with NVDEC, and the session is an ordinary Jellyfin client, so a phone's
 **Play on** target works as a remote with no hardware at all.
 
-What a deploy does and does not do. `cage-tty1` is `restartIfChanged = false`,
-so a switch never kills a viewing session: a new Jellyfin Desktop arrives at
-the next `sudo systemctl restart cage-tty1` (when nobody is watching) or
-reboot. Deploy **over ssh, never from tty1** — activation starts `cage-tty1`,
-which takes tty1 from `getty`; the console is on tty2 (Ctrl+Alt+F2, cage runs
-with `-s` so VT switching works). `graphical.target` becomes the default
+What a deploy does and does not do. `tv-seat` is `restartIfChanged = false`,
+so a switch never kills a viewing session: new clients arrive at the next
+`sudo systemctl restart tv-seat` (when nobody is watching) or reboot. Deploy
+**over ssh, never from tty1** — activation starts `tv-seat`, which takes tty1
+from `getty`; the console is on tty2. `graphical.target` becomes the default
 target, an admin ssh login now gets PipeWire's user sockets (the daemon
 itself stays socket-activated and does not spawn), and logind
 ignores the power button: roommates are within reach of the box now, the TV's
@@ -119,18 +128,29 @@ remote is the off switch, and ssh administers the server. Immediate escape
 without a rollback:
 
 ```sh
-sudo systemctl stop cage-tty1 && sudo systemctl start getty@tty1
+sudo systemctl stop tv-seat && sudo systemctl start getty@tty1
 
 # and if it gave up after ten failed starts in an hour (ntfy will have said so):
-sudo systemctl reset-failed cage-tty1 && sudo systemctl start cage-tty1
+sudo systemctl reset-failed tv-seat && sudo systemctl start tv-seat
 ```
 
-After a deploy: `systemctl status cage-tty1` (if inactive, `sudo systemctl
-start cage-tty1` — `graphical.target` only becomes the default at boot);
-`journalctl -u cage-tty1 -b`, where "could not load the Qt platform plugin"
-means the Wayland QPA did not come up (switch the session to `--platform
-xcb`) and "no input devices" means the env var did not reach cage;
-`loginctl list-sessions` shows `tv` on seat0. Audio:
+After a deploy: `systemctl status tv-seat` (if inactive, `sudo systemctl start
+tv-seat` — `graphical.target` only becomes the default at boot);
+`journalctl -u tv-seat -b`, where `Error on line N` quotes a bad sway config
+line, `Cannot enable HDR on output ...` names which half refused (the renderer
+or the output), and "could not load the Qt platform plugin" means Jellyfin
+Desktop's Wayland QPA did not come up (swap `QT_QPA_PLATFORM` for `--platform
+xcb` on its exec line in `tv.nix`); `loginctl list-sessions` shows `tv` on
+seat0. What the compositor thinks of the output, from ssh:
+
+```sh
+SOCK=$(sudo find /run/user/$(id -u tv) -name 'sway-ipc.*.sock' | head -1)
+sudo -u tv env XDG_RUNTIME_DIR=/run/user/$(id -u tv) SWAYSOCK=$SOCK \
+  swaymsg -t get_outputs | grep -iE '"name"|"hdr"|"current_mode"'
+```
+
+`"hdr"` inside `features` is whether the output *can*; the top-level one is
+whether it *is*. Audio:
 
 ```sh
 sudo -u tv env XDG_RUNTIME_DIR=/run/user/$(id -u tv) wpctl status
@@ -140,10 +160,11 @@ should list the HDMI node as the default sink. It exists only while the TV is
 on, and if the onboard HDA turns out to expose an HDMI sink of its own the
 regex in `tv.nix` matches both — narrow it to the name `wpctl` shows. Knobs if
 the compositor will not start on the proprietary driver, in order:
-`WLR_NO_HARDWARE_CURSORS=1` in `services.cage.environment`, swapping
-that block's `QT_QPA_PLATFORM` for `--platform xcb` on the wrapper's exec
-line, `--disable-gpu`, and `hardware.nvidia.open = true`
-(Turing is on upstream's recommended side; it needs a reboot).
+`WLR_NO_HARDWARE_CURSORS=1` in the unit's `environment`, `--disable-gpu` on
+Jellyfin Desktop's exec line, and `hardware.nvidia.open = true` (Turing is on
+upstream's recommended side; it needs a reboot). Dropping `WLR_RENDERER` back
+to the GLES2 default will start sway but costs HDR: only the Vulkan renderer
+implements output colour transforms.
 
 ### First run — none of this is declarative
 
@@ -194,7 +215,7 @@ Whether the server has Bluetooth is unknown — if it does,
 remote. A USB-dongle air-mouse is a plain HID keyboard and mouse and needs no
 driver, but it does need one config change when it lands: this box has no
 cursor theme, so the pointer falls back to libwayland-cursor's small built-in
-arrow — invisible from the sofa. Add to `services.cage.environment` in
+arrow — invisible from the sofa. Add to the `tv-seat` unit's `environment` in
 `tv.nix`:
 
 ```nix
@@ -204,9 +225,27 @@ XCURSOR_SIZE = "72"; # a size Adwaita ships natively; 96 is the next one up
 ```
 
 `XCURSOR_PATH` has to be spelled out because nothing on a server exports the
-session variables a desktop would. A switch never restarts the kiosk, so follow
-it with `sudo systemctl restart cage-tty1`. Keep `WLR_LIBINPUT_NO_DEVICES`
+session variables a desktop would. A switch never restarts the seat, so follow
+it with `sudo systemctl restart tv-seat`. Keep `WLR_LIBINPUT_NO_DEVICES`
 regardless: a pulled dongle or a dead battery must not stop the TV coming up.
+
+**7. The HDR player's login.** mpv-shim's settings are written from `tv.nix` on
+every start, but its credentials are not: `cred.json` comes from one
+interactive login and is the only part of this seat that cannot be declared.
+It is not backed up; redoing it is the whole recovery.
+
+```sh
+cd ~/nix-config
+sudo -u tv -H "$(nix build --no-link --print-out-paths \
+  .#nixosConfigurations.wheezertbts.pkgs.jellyfin-mpv-shim)/bin/jellyfin-mpv-shim"
+# Server URL: http://127.0.0.1:8096 — then the livingroom account, then Ctrl-C
+```
+
+Do this with `tv-seat` stopped, or the two instances fight over the same
+config directory. It appears on phones as **Living Room TV** in **Play on**.
+Note the login prompt only exists because `enable_gui = false` is declared:
+with the GUI enabled the shim loads a tray and a preferences window, which on
+a machine with no X display die and take the prompt down with them.
 
 ### The trade-offs, stated once
 
@@ -214,26 +253,40 @@ regardless: a pulled dongle or a dead battery must not stop the TV coming up.
   roommate's personal Jellyfin account (phones, the Jellyseerr login). The
   alternative — each roommate signing their own account in on the TV — gives
   one history but no gate.
-- **No HDR from Jellyfin Desktop, under any compositor.** Its mpv output is
-  composited through Qt Quick, so HDR titles play tone-mapped to SDR (upstream
-  issue #523, open since 2023). True HDR on Linux is a standalone mpv
-  (`vo=gpu-next` with `target-colorspace-hint`) under an HDR-capable
-  compositor — sway with its Vulkan renderer, or KWin — glued to Jellyfin by
-  `jellyfin-mpv-shim` as a **Play on** target, browsing from the phone. The
-  shakiest link is wlroots' Vulkan renderer on the proprietary NVIDIA driver,
-  and nothing found proves it on this card, so no sway config gets written on
-  speculation. The spike that decides, ad hoc on the server: stop `cage-tty1`,
-  start sway as `tv` with `WLR_RENDERER=vulkan`, `output * hdr on`,
-  `render_bit_depth 10` and a mode the HDMI 2.0b link carries at 10-bit
-  (`3840x2160@30Hz` or `1920x1080@60Hz`), then play an HDR10 sample with
-  `mpv --vo=gpu-next --target-colorspace-hint=yes
-  --target-colorspace-hint-mode=source --hwdec=nvdec`. Pass means the TV's own
-  overlay says HDR/PQ and the picture is not washed out; only then does cage
-  become sway with mpv-shim in the session. If sway refuses the renderer, the
-  fallbacks are a Plasma session (KWin HDR is the most-reported working path
-  on NVIDIA) or a streaming stick for HDR with the kiosk staying SDR. Kodi is
-  out either way: HDR only on its GBM backend, no NVDEC, and its own community
-  calls NVIDIA + GBM + HDR unsupported.
+- **HDR works, but only through a cast, and only per film.** Verified on this
+  box on 2026-09-17, which is why any of this is written down: sway 1.12 on
+  wlroots' **Vulkan** renderer enabled HDR on the proprietary NVIDIA
+  595.71.05 driver (`swaymsg -t get_outputs` reported the output both
+  HDR-capable and HDR-enabled), and a 4K HDR10 remux played correctly. The
+  GLES2 default cannot — it has no output colour transforms — so
+  `WLR_RENDERER=vulkan` is load-bearing. Jellyfin Desktop still cannot output
+  HDR under any compositor (#523: its mpv is composited through Qt Quick), so
+  HDR titles are cast from a phone to **Living Room TV** and played by mpv,
+  while browsing on the TV stays SDR. Casting is not a workaround for a
+  missing remote — it is the only path that reaches mpv directly.
+- **Why HDR is not just left on.** The TV's input carries 600 MHz. 10-bit 4K
+  needs 371 MHz at 24/30 Hz but 743 MHz at 60 Hz, and 8-bit 4K60 needs 594.
+  So the seat idles at 4K60 SDR for a responsive UI and mpv-shim's own event
+  hooks (`pre_media_cmd`, `stop_cmd`, `media_ended_cmd` in `tv.nix`) drop the
+  output to 4K24 + HDR for the length of a film and put it back afterwards —
+  they run synchronously, before playback starts and on both stop and
+  end-of-file. Expect a few seconds of black while the panel re-syncs.
+- **The TV must be told to accept it.** Samsung gates full HDMI bandwidth
+  behind a per-input setting (*General → External Device Manager → Input
+  Signal Plus*, "HDMI UHD Color" on older sets). With it off the input
+  advertises HDMI 1.4 and 300 MHz, and no 10-bit 4K mode fits at all —
+  `edid-decode` on `/sys/class/drm/card0-HDMI-A-1/edid` shows `Maximum TMDS
+  clock: 300 MHz` and no HDMI Forum block. **It resets when you switch
+  inputs**, so check it first when HDR stops working. The panel also
+  advertises HDR10+ and HLG; this path signals static HDR10 only, and the set
+  has no Dolby Vision.
+- **Jellium, not taken.** The CEF rewrite of Jellyfin Desktop does HDR *and*
+  browses on the TV, which would collapse the two clients into one. It left
+  the Jellyfin org in July 2026 and continues as an unofficial one-developer
+  project with no tagged releases and no nixpkgs package, so it stays a
+  candidate rather than a dependency. Kodi is out regardless: HDR only on its
+  GBM backend, no NVDEC, and its own community calls NVIDIA + GBM + HDR
+  unsupported.
 
 ## Credits
 
