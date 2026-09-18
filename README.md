@@ -144,9 +144,15 @@ xcb` on its exec line in `tv.nix`); `loginctl list-sessions` shows `tv` on
 seat0. What the compositor thinks of the output, from ssh:
 
 ```sh
-SOCK=$(sudo find /run/user/$(id -u tv) -name 'sway-ipc.*.sock' | head -1)
-sudo -u tv env XDG_RUNTIME_DIR=/run/user/$(id -u tv) SWAYSOCK=$SOCK \
-  swaymsg -t get_outputs | grep -iE '"name"|"hdr"|"current_mode"'
+cd ~/nix-config
+# swaymsg is on the UNIT's path, not an admin shell's. Take it from the same
+# package the seat runs rather than putting a compositor in systemPackages.
+SWAYMSG=$(nix build --no-link --print-out-paths \
+  .#nixosConfigurations.wheezertbts.pkgs.sway)/bin/swaymsg
+TVUID=$(id -u tv)
+SOCK=$(sudo find /run/user/$TVUID -name 'sway-ipc.*.sock' | head -1)
+sudo -u tv env XDG_RUNTIME_DIR=/run/user/$TVUID SWAYSOCK=$SOCK \
+  $SWAYMSG -t get_outputs | grep -iE '"name"|"hdr"|"refresh"'
 ```
 
 `"hdr"` inside `features` is whether the output *can*; the top-level one is
