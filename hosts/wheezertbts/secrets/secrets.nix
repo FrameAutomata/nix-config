@@ -23,4 +23,11 @@ in
   # EnvironmentFile with AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY for the B2
   # application key (restic talks to B2 over its S3-compatible API)
   "b2-env.age".publicKeys = all;
+  # EnvironmentFile per job-search instance: UI_PASSWORD (the UI refuses to
+  # start without one under UI_LAN) and GH_TOKEN (Refresh and Push shell out to
+  # `gh` against that person's PRIVATE repo). One file per person, never
+  # shared — the password is the only thing between a tailnet peer and someone
+  # else's job search, and a shared one cannot be revoked for just one of them.
+  "job-search-cory.age".publicKeys = all;
+  "job-search-eli.age".publicKeys = all;
 }
