@@ -1,5 +1,3 @@
-# AdGuard Home: LAN/tailnet DNS with split-DNS rewrites pointing
-# *.baseDomain (and the apex) at this box's LAN IP, plus ad blocking.
 { config, lib, ... }:
 let
   cfg = config.homelab.services.adguard;
@@ -69,7 +67,6 @@ in
       lib.mkIf config.homelab.services.headscale.enable
         [ homelab.tailnetIP ];
 
-    # UDP 67 additionally when AdGuard is the LAN's DHCP server
     homelab.lanPorts.adguard = {
       tcp = [ 53 ];
       udp = [ 53 ] ++ lib.optional (config.services.adguardhome.settings.dhcp.enabled or false) 67;

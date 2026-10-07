@@ -18,10 +18,15 @@ in
     ../../modules/common
     ../../modules/common/nvidia.nix
     ../../modules/workstation
+    ../../modules/workstation/surfshark.nix
     ../../modules/homelab-client
   ];
   # No modules/workstation/dev-tools.nix: that is the editors/CLI/release-check layer
   # for the machines this repo is deployed from, and none of it is this user's.
+
+  # Hand-placed only until this host is enrolled in keys.nix; from then on it
+  # is an agenix secret, the way README "Surfshark" wires frame-automata.
+  surfshark.environmentFile = "/etc/surfshark/wireguard.env";
 
   networking.hostName = "wonudesktop";
   time.timeZone = site.timeZone;

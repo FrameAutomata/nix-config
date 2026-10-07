@@ -1,4 +1,3 @@
-# Headscale + its public vhost (ACME HTTP-01) + tailscale client.
 # CRITICAL: roommates' remote access depends on this module. See CLAUDE.md hard rules.
 { config, lib, ... }:
 let
@@ -29,7 +28,7 @@ in
 
     services.tailscale = {
       enable = true;
-      openFirewall = true; # opens the tailscale UDP port
+      openFirewall = true;
       # "both" = client behaviors (rp_filter loose, preserved from the
       # original config) + server behaviors (IP forwarding, needed to route
       # the advertised LAN subnet). "server" alone would NOT loosen rp_filter.

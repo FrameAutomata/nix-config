@@ -7,13 +7,18 @@
 #   cd hosts/frame-automata/secrets && agenix -e samba-client.age
 let
   keys = import ../../../keys.nix;
+  all = [
+    keys.admin
+    keys.hosts.frame-automata
+  ];
 in
 {
   # mount.cifs credentials for the homelab Samba shares — exactly two lines,
   # `username=` and `password=`, matching what smbpasswd was set to on the
   # server. Consumed by homelabClient.mounts.credentialsFile.
-  "samba-client.age".publicKeys = [
-    keys.admin
-    keys.hosts.frame-automata
-  ];
+  "samba-client.age".publicKeys = all;
+  # EnvironmentFile with SURFSHARK_PRIVATE_KEY=... — THIS host's WireGuard key
+  # for modules/workstation/surfshark.nix, not the server's and not the
+  # laptop's: one key pair per machine. Keep it to that one variable.
+  "surfshark-env.age".publicKeys = all;
 }

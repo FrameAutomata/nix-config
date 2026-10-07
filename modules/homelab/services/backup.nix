@@ -79,7 +79,6 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # hourly snapshot ladder of the whole pool
     services.btrbk.instances.media = {
       onCalendar = "hourly";
       settings = {

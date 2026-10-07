@@ -21,11 +21,9 @@
 
 {
   environment.systemPackages = with pkgs; [
-    # editors / terminal
     neovim
     zed-editor
     ghostty
-    # dev + homelab admin
     gh
     # Zed's Nix extension declares nil and nixd but downloads neither — it
     # only `which`es them, so an uninstalled server is silently no server.
