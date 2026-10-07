@@ -23,6 +23,7 @@
   environment.systemPackages = with pkgs; [
     neovim
     zed-editor
+    code-cursor
     ghostty
     gh
     # Zed's Nix extension declares nil and nixd but downloads neither — it
