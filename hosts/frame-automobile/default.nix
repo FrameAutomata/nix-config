@@ -127,6 +127,10 @@ in
     notifyOnFailure = [ "nixos-upgrade" ];
   };
 
+  # Hand-placed, and not an exception to "no secrets on this host": it decrypts
+  # nothing in this repo — README, the laptop's "No secrets" section.
+  surfshark.environmentFile = "/etc/surfshark/wireguard.env";
+
   # package = overrides the module default, which would otherwise build from
   # claude-desktop's own nixpkgs input rather than this host's.
   programs.claude-desktop = {

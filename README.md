@@ -372,8 +372,7 @@ and rekey with `agenix -r` from that directory. The `admin` key is what makes
 that recoverable.
 
 **5. The Surfshark key**, through agenix — see
-[Surfshark](#surfshark-the-three-workstations). This host is not wired to the
-module until that secret exists, because the two have to be one commit.
+[Surfshark](#surfshark-the-three-workstations).
 
 ## Laptop (`frame-automobile`)
 
@@ -516,7 +515,6 @@ a scan taken with no USB storage attached drops `usb_storage`/`sd_mod` — which
 is why `default.nix` adds them back.
 
 **4. The Surfshark key**, hand-placed — see [Surfshark](#surfshark-the-three-workstations).
-Until it exists `NetworkManager-ensure-profiles` fails on every boot and switch.
 
 ## Second desktop (`wonudesktop`)
 
@@ -647,13 +645,10 @@ behaviour. Worth doing with them on day one:
 > - Steam → Settings → Compatibility → enable Proton for all titles.
 
 **6. The Surfshark key**, hand-placed — see [Surfshark](#surfshark-the-three-workstations).
-Until it exists `NetworkManager-ensure-profiles` fails on every boot, which
-costs nothing but a red unit: there is simply no Surfshark entry in the network
-applet. Its own key pair, not a copy of another machine's.
 
 ### Deliberately not wired up yet
 
-- **No Samba mounts and no secrets.** This host has no key in `keys.nix`, so it
+- **No Samba mounts and no agenix secrets.** This host has no key in `keys.nix`, so it
   cannot decrypt a `samba-client` secret of its own. Unlike the laptop, that is
   not a standing decision — it is just a machine that does not exist yet. To
   change it: enroll `/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix`, add
@@ -702,7 +697,8 @@ sudo wg show surfshark        # "latest handshake" is the proof the far end answ
 ```
 
 No password prompt either way — every workstation user is in `networkmanager`.
-Imported per host, like `dev-tools.nix`.
+Imported per host, and the host says where its key is: `surfshark.environmentFile`
+has no default.
 
 Not the official app: nixpkgs has no Surfshark package, and the server already
 runs Surfshark's manual WireGuard for the download stack. Not `nmcli connection
@@ -717,9 +713,9 @@ the client's real v6 address; this profile does not.
   route sits in its own table, so the main table — and with it the LAN — is
   untouched. Printers, the NAS and `192.168.1.239` stay reachable.
 - **IPv6 is refused, not tunnelled.** Surfshark carries none, so the profile
-  installs an `unreachable ::/0` for as long as it is up. A v6 connect fails in
-  about a millisecond and the application falls back to v4; nothing waits out
-  a timeout. The route goes away with the profile.
+  installs an `unreachable ::/0` for as long as it is up. A v6 connect fails at
+  once and the application falls back to v4; nothing waits out a timeout. The
+  route goes away with the profile.
 - **The tailnet keeps working.** NetworkManager's two rules land at priority
   30766–31766, behind Tailscale's 5210–5270, so tailnet peers and the server's
   advertised routes still go to `tailscale0`, and `tailscaled`'s own packets
@@ -741,8 +737,15 @@ server, and separate pairs are what let a lost laptop be cut off by deleting
 its key alone.
 
 **The laptop and `wonudesktop`** keep the key in a root-only file. Do this
-before the first rebuild that imports the module — the unit that writes the
-profile fails for as long as the file is missing:
+before the first rebuild that imports the module where that is possible; on a
+fresh install (`wonudesktop`) it is not, so expect the unit red from first boot
+until its first-boot step 6. The unit that writes the profile,
+`NetworkManager-ensure-profiles`, fails for as long as the file is missing or
+does not define the variable, and the applet then has no Surfshark entry. A
+failed unit also makes `nixos-rebuild switch` exit non-zero: a manual switch
+reads as a failed deploy, and on the laptop the weekly upgrade would fail and
+push to ntfy. `wonudesktop`'s weekly upgrade uses `boot`, which starts nothing,
+so there it is only a red unit.
 
 ```sh
 sudo install -d -m 700 /etc/surfshark
@@ -756,8 +759,8 @@ Register the printed public key at my.surfshark.com → VPN → Manual setup →
 WireGuard → *I have a key pair*, named after the host. (Letting the dashboard
 generate the pair works too: put the `PrivateKey` from the `.conf` it hands you
 in the file instead.) The `.conf` it offers for Dallas is also the cross-check
-for this module's defaults — its `Endpoint` and `PublicKey` should be
-`us-dal.prod.surfshark.com:51820` and the `publicKey` in `surfshark.nix`.
+for the two constants at the top of `surfshark.nix`: its `Endpoint` and
+`PublicKey` should match them.
 
 Then rebuild, or if the module is already live:
 
@@ -803,12 +806,14 @@ tailscale ping wheezertbts           # the tailnet is still there
   under `/etc` that shadows the declared one from then on. If that happens,
   delete the copy in `/etc/NetworkManager/system-connections/` and restart
   `NetworkManager-ensure-profiles`.
-- **Another city** is two options, `surfshark.endpoint` and
-  `surfshark.publicKey`. Each location has its own public key; both come from
-  the entry for that city in
-  `https://api.surfshark.com/v4/server/clusters/generic` (`connectionName`,
-  `pubKey`). The machine's own key pair does not change.
-- **A new key** is a new file (or a new `.age`) and a restart of
-  `NetworkManager-ensure-profiles`; delete the old key in the dashboard.
+- **Another city** is the two constants at the top of `surfshark.nix`, changed
+  together: each location has its own public key, and both come from the entry
+  for that city in `https://api.surfshark.com/v4/server/clusters/generic`
+  (`connectionName`, `pubKey`). The machine's own key pair does not change.
+- **A new key** is a new file and a restart of `NetworkManager-ensure-profiles`.
+  On `frame-automata` it is a new `.age`, then a `nixos-rebuild switch` BEFORE
+  that restart: agenix decrypts only at activation, so a restart alone renders
+  the old key again. Delete the old key in the dashboard once the new one has
+  handshaked.
 - **A network that blocks UDP** blocks this. WireGuard has no TCP fallback, and
   the official app's OpenVPN-over-TCP mode is the thing this does not have.

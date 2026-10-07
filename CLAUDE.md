@@ -64,7 +64,9 @@ host NOT administered by the person using it, NOT yet installed).
   each host's secrets name only admin + that host, so neither can read the
   other's — widening them is the mistake to avoid
 - hosts/frame-automobile/ — laptop; same module set as the desktop plus
-  modules/common/intel-gpu.nix and a host-local power.nix. NO secrets dir and no
+  modules/common/intel-gpu.nix, a host-local power.nix and
+  modules/workstation/surfshark.nix (the desktop does not import that one
+  yet — phase note). NO secrets dir and no
   key in keys.nix, deliberately: its disk is unencrypted, so a host key there
   would be a decryption capability for anyone holding the laptop. Its one
   hand-placed credential is /etc/surfshark/wireguard.env — NOT an exception to
@@ -73,7 +75,7 @@ host NOT administered by the person using it, NOT yet installed).
 - hosts/wonudesktop/ — girlfriend's desktop; modules/workstation (NOT its
   dev-tools.nix / dev-databases.nix) + modules/common/nvidia.nix + host-local
   gpu.nix (RTX 2070 Super: open kernel modules, VRAM-preserving suspend) +
-  modules/homelab-client.
+  modules/homelab-client + modules/workstation/surfshark.nix.
   hardware-configuration.nix is a `throw` PLACEHOLDER until the machine is
   installed, so this host does not eval and `nix flake check` is red — expected,
   not a bug. `nix flake check` walks nixosConfigurations on its own, so no
@@ -111,7 +113,9 @@ host NOT administered by the person using it, NOT yet installed).
 - modules/workstation/surfshark.nix — Surfshark on the workstations: a
   NetworkManager WireGuard profile via ensureProfiles, autoconnect OFF, so the
   profile is the toggle (Plasma's network applet / `nmcli connection up
-  Surfshark`). Opt-in by import, like the dev-*.nix layers. NOT the server's
+  Surfshark`). Opt-in by import, and the importing host MUST set
+  `surfshark.environmentFile` (no default, so a host with an agenix identity
+  cannot land on a hand-placed key by omission). NOT the server's
   wireguard-netns (that confines one service; this is a whole desktop) and NOT
   the official app (not in nixpkgs). One key pair PER MACHINE, read from
   `surfshark.environmentFile`: a hand-placed /etc/surfshark/wireguard.env on
@@ -146,10 +150,10 @@ key there is surfshark-env.age, which this laptop cannot create (no admin key),
 and age.secrets.*.file has to exist at eval time, so the import and the
 age.secrets wiring are one commit authored on frame-automata (the agenix rule
 is already in hosts/frame-automata/secrets/secrets.nix; the exact lines are in
-README "Surfshark"). The laptop has its key and RAN it on 2026-10-07, but only
-from a `nixos-rebuild test` build: not switched, and not on main, so a reboot
-or the weekly auto-upgrade drops it again. wonudesktop and frame-automata have
-no key.
+README "Surfshark"). The laptop has its key and is RUNNING the module, switched
+on 2026-10-07 from a working tree that also held uncommitted local changes --
+so no generation built from exactly this commit has run. It is not on main
+yet, so the weekly auto-upgrade drops it again until this merges.
 
 Verified 2026-10-07 in a five-VM NixOS test against a v4-only WireGuard server
 that NATs (a stand-in, NOT Surfshark), with the module exactly as committed: an
@@ -160,9 +164,13 @@ Tailscale's rule set (copied from this laptop's live `ip rule`) still wins for
 tailnet and subnet routes, and its exclusive resolvconf entry
 (`resolvconf -m 0 -x -a tailscale`, from tailscaled's source) keeps DNS on the
 tailnet while both are up; the tunnel survives NM's sleep/wake and the underlay
-dropping; a reboot comes back OFF; nothing is left behind on disconnect.
+dropping; a reboot comes back OFF; nothing is left behind on disconnect; and a
+key file that is missing, or present without the variable, fails the unit and
+renders no profile.
 
-Verified on the laptop against Surfshark itself the same day: the dashboard's
+Verified on the laptop against Surfshark itself the same day, with the profile
+this commit renders byte for byte (the unit's empty-key check came later and
+has only run in the VM): the dashboard's
 us-dal.conf matches the module's endpoint, public key, address and resolvers;
 with the profile up ifconfig.co saw a Dallas address on Datacamp (Surfshark's
 host), resolv.conf held only the two Surfshark resolvers, NM's rules sat

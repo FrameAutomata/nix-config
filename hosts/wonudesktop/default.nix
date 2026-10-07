@@ -23,9 +23,10 @@ in
   ];
   # No modules/workstation/dev-tools.nix: that is the editors/CLI/release-check layer
   # for the machines this repo is deployed from, and none of it is this user's.
-  #
-  # surfshark.nix reads its key from a hand-placed file here, like the laptop:
-  # this host has no agenix identity yet. First-boot step 6 in the README.
+
+  # Hand-placed only until this host is enrolled in keys.nix; from then on it
+  # is an agenix secret, the way README "Surfshark" wires frame-automata.
+  surfshark.environmentFile = "/etc/surfshark/wireguard.env";
 
   networking.hostName = "wonudesktop";
   time.timeZone = site.timeZone;

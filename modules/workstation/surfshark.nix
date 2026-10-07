@@ -1,11 +1,6 @@
-# Surfshark as a NetworkManager WireGuard profile: a full tunnel that is OFF
-# until someone turns it on. The profile IS the toggle — "Surfshark" in
-# Plasma's network applet, or `nmcli connection up Surfshark` / `down` — and
-# every workstation user is in the networkmanager group, which the NM module's
-# polkit rule lets flip it without a password. autoconnect is off, so a reboot
-# always comes back with it off.
-#
-# Opt-in per host by importing this file, the way dev-tools.nix is.
+# Surfshark as a NetworkManager WireGuard profile, so the profile is the
+# toggle: every workstation user is in the networkmanager group, and the NM
+# module's polkit rule lets that group bring it up and down without a password.
 #
 # Not the official app: nixpkgs carries no Surfshark package, so that is a
 # closed-source Electron .deb to repackage and keep moving. The server already
@@ -32,57 +27,55 @@
 }:
 
 let
-  cfg = config.surfshark;
+  # Dallas, like the server's tunnel. A location is this PAIR: the `pubKey`
+  # beside the matching `connectionName` in
+  # https://api.surfshark.com/v4/server/clusters/generic, and the `PublicKey`
+  # in the .conf the dashboard hands out for it.
+  endpoint = "us-dal.prod.surfshark.com:51820";
+  publicKey = "0iwHQpV+rsOg38ogv4g4XMLJa51YqWY/yKWR9UEUMDk=";
 in
 {
-  options.surfshark = {
-    environmentFile = lib.mkOption {
-      # `str`, not `path`: a path literal here would copy the key into the
-      # world-readable store. Same reason homelabClient.mounts.credentialsFile is.
-      type = lib.types.str;
-      default = "/etc/surfshark/wireguard.env";
-      description = ''
-        Root-only file holding one line, `SURFSHARK_PRIVATE_KEY=<base64>`: this
-        machine's WireGuard private key, whose public half is registered in the
-        Surfshark dashboard. One key pair PER MACHINE — two machines sharing one
-        fight over the same peer slot on the server, and a lost laptop is then
-        revoked by deleting its key alone.
+  options.surfshark.environmentFile = lib.mkOption {
+    # `str`, not `path`: a path literal here would copy the key into the
+    # world-readable store. Same reason homelabClient.mounts.credentialsFile is.
+    #
+    # No default, so a host states where its key comes from: one with an
+    # agenix identity cannot end up on a hand-placed file by omission.
+    type = lib.types.str;
+    example = "/etc/surfshark/wireguard.env";
+    description = ''
+      Root-only file holding one line, `SURFSHARK_PRIVATE_KEY=<base64>`: this
+      machine's WireGuard private key, whose public half is registered in the
+      Surfshark dashboard. One key pair PER MACHINE — two machines sharing one
+      fight over the same peer slot on the server, and a lost laptop is then
+      revoked by deleting its key alone.
 
-        The default is a hand-placed file, for the hosts that have no agenix
-        identity. A host that has one points this at its decrypted secret.
-      '';
-    };
-
-    endpoint = lib.mkOption {
-      type = lib.types.str;
-      default = "us-dal.prod.surfshark.com:51820";
-      description = "Surfshark WireGuard server, host:port. Dallas, like the server's tunnel.";
-    };
-
-    publicKey = lib.mkOption {
-      type = lib.types.str;
-      default = "0iwHQpV+rsOg38ogv4g4XMLJa51YqWY/yKWR9UEUMDk=";
-      description = ''
-        The public key of the server named by `endpoint`. Every location has
-        its own; it is the `pubKey` beside the matching `connectionName` in
-        https://api.surfshark.com/v4/server/clusters/generic, and the
-        `PublicKey` in the .conf the dashboard hands out for that location.
-      '';
-    };
+      A hand-placed file on a host with no agenix identity; the decrypted
+      secret's path on a host that has one.
+    '';
   };
 
   config = {
     # NM drives the kernel module directly and needs none of this. It is here
-    # for the person: `wg genkey` in the README runbook, and `sudo wg show
-    # surfshark`, whose "latest handshake" line is the only proof the far end
-    # answered.
+    # for `sudo wg show surfshark`, whose "latest handshake" line is the only
+    # proof the far end answered.
     environment.systemPackages = [ pkgs.wireguard-tools ];
 
+    # envsubst renders an unset variable as an empty key and exits 0, so a file
+    # that exists but misnames the variable would leave a profile that can
+    # never connect behind a green unit.
+    systemd.services.NetworkManager-ensure-profiles.preStart = ''
+      if [ -z "''${SURFSHARK_PRIVATE_KEY:-}" ]; then
+        echo "${config.surfshark.environmentFile} does not define SURFSHARK_PRIVATE_KEY" >&2
+        exit 1
+      fi
+    '';
+
     networking.networkmanager.ensureProfiles = {
-      # The unit that writes the profile FAILS while this file is missing
-      # ("Failed to load environment files", system state degraded), so the
-      # key goes in place before the first switch — README "Surfshark".
-      environmentFiles = [ cfg.environmentFile ];
+      # A missing file FAILS the unit too ("Failed to load environment
+      # files"), and that is left hard on purpose. The unit is upstream's and
+      # writes every profile a host declares, so it takes those down with it.
+      environmentFiles = [ config.surfshark.environmentFile ];
 
       # Rendered to /run on every boot and switch. Do not edit it in Plasma's
       # connection editor: NM then saves a copy under /etc that shadows this
@@ -98,10 +91,13 @@ in
           autoconnect = false;
         };
 
+        # In the profile, not agent-owned in KWallet: plasma-nm's secret agent
+        # hands back whatever it has for a WireGuard profile and never opens a
+        # prompt, so a key left to the agent has no way in.
         wireguard.private-key = "$SURFSHARK_PRIVATE_KEY";
 
-        "wireguard-peer.${cfg.publicKey}" = {
-          inherit (cfg) endpoint;
+        "wireguard-peer.${publicKey}" = {
+          inherit endpoint;
           # v4 only, as Surfshark serves it. The /0 is what makes NM build
           # the policy-routed default route; the LAN stays reachable beside it.
           allowed-ips = "0.0.0.0/0;";
@@ -123,7 +119,7 @@ in
         # Each alternative was run and is worse — `::/0` in allowed-ips with
         # v6 disabled here installs no route at all and LEAKS; `::/0` with a
         # made-up address blackholes, so every v6 connect waits out its
-        # timeout where this fails in a millisecond and falls back to v4.
+        # timeout where this fails at once and falls back to v4.
         ipv6 = {
           # Routes need v6 alive on the interface; a link-local address is
           # the least that keeps it so. stable-privacy because a keyfile
