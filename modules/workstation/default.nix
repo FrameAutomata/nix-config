@@ -51,19 +51,13 @@
   # a dev-*.nix layer — that boundary is what lets a third workstation share
   # this file.
   environment.systemPackages = with pkgs; [
-    # hardware / gaming
     mangohud
     pciutils
     usbutils
-    # editors
     kdePackages.kate
-    # browsers
     vivaldi
     brave
-    # chat
     discord
-    # music
-    #
     # Gapless Subsonic/Jellyfin client on mpv; whichever server it logs into
     # is per-user state, not config here.
     #
@@ -73,7 +67,6 @@
     # Wayland with it; until then it runs on XWayland under Plasma, which for
     # an audio player costs only HiDPI crispness.
     supersonic
-    # productivity
     libreoffice-qt
     hunspell
     hunspellDicts.en_US

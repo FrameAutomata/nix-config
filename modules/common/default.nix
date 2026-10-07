@@ -1,4 +1,4 @@
-# Host-agnostic base: boot, locale, nix settings, admin user, ssh, base packages.
+# Host-agnostic base.
 # Must never import or assume anything from modules/homelab.
 { pkgs, ... }:
 

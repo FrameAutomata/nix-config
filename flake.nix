@@ -270,8 +270,6 @@
         self.packages.${system}
         // hostChecks
         // {
-          # Keeps the tree nixfmt-clean.
-          #
           # The fileset narrows the input to .nix files only. Depending on
           # `${self}` instead would rebuild this on any tracked file — and 17%
           # of this repo's commits touch no .nix file at all (README.md and

@@ -5,6 +5,10 @@ it), `frame-automata` (Thomas's desktop, admin workstation),
 (girlfriend's desktop — 5800X3D/RTX 2070 Super, gaming + productivity; the one
 host NOT administered by the person using it, NOT yet installed).
 
+## Code Style
+
+- **No pointless comments**: Do not add comments that simply describe what the code does. The code should be self-explanatory. Only add comments when explaining non-obvious "why" decisions.
+
 ## Hard rules
 - Never disable openssh / remove authorized keys / close port 22.
 - Never break Headscale (apex vhost wheezertbts.duckdns.org → :8080, ports 80/443, DuckDNS timer).

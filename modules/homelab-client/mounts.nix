@@ -1,4 +1,3 @@
-# Samba shares from the homelab, mounted on demand.
 { config, lib, ... }:
 
 let
