@@ -37,6 +37,7 @@ in
     ../../modules/workstation
     ../../modules/workstation/dev-tools.nix
     ../../modules/workstation/dev-databases.nix
+    ../../modules/workstation/surfshark.nix
     ../../modules/homelab-client
   ];
 

@@ -16,4 +16,11 @@ in
     keys.admin
     keys.hosts.frame-automata
   ];
+  # EnvironmentFile with SURFSHARK_PRIVATE_KEY=... — THIS host's WireGuard key
+  # for modules/workstation/surfshark.nix, not the server's and not the
+  # laptop's: one key pair per machine. Keep it to that one variable.
+  "surfshark-env.age".publicKeys = [
+    keys.admin
+    keys.hosts.frame-automata
+  ];
 }

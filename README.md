@@ -43,7 +43,8 @@ sudo nixos-rebuild switch --rollback             # undo
   repo is deployed from: `dev-tools.nix` (editors, `nixd`, `gh`, `claude-code`,
   direnv, the release check) and `dev-databases.nix` (PostgreSQL + ClickHouse
   for Traceway). Anything true of *every* interactive machine stays in
-  `default.nix`
+  `default.nix`. `surfshark.nix` is opt-in the same way: Surfshark as a
+  NetworkManager WireGuard profile, toggled from the network applet
 - `modules/homelab-client/` — the *using* side: tailnet, ntfy alerts, mounts
 - `modules/notify.nix` — ntfy failure alerts, shared by server and clients
 - `site.nix` — facts both sides need (domain, LAN IP, topic, timezone)
@@ -370,6 +371,10 @@ undecryptable: enroll the new `/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix`
 and rekey with `agenix -r` from that directory. The `admin` key is what makes
 that recoverable.
 
+**5. The Surfshark key**, through agenix — see
+[Surfshark](#surfshark-the-three-workstations). This host is not wired to the
+module until that secret exists, because the two have to be one commit.
+
 ## Laptop (`frame-automobile`)
 
 Acer Aspire A14-52MT — Core Ultra 5 226V "Lunar Lake", BE200 Wi-Fi 7. Same
@@ -401,6 +406,14 @@ To change that, encrypt the disk first, then enroll
 `/etc/ssh/ssh_host_ed25519_key.pub` in `keys.nix`, add
 `hosts/frame-automobile/secrets/` with its own `secrets.nix`, and set
 `homelabClient.mounts` the way `hosts/frame-automata/default.nix` does.
+
+The Surfshark key in `/etc/surfshark/wireguard.env` is not an exception to
+this, though it is a credential on the same unencrypted disk. It decrypts
+nothing in this repo and reaches nothing in the house: whoever holds the laptop
+gets to use a VPN subscription until that one key is deleted in the Surfshark
+dashboard. That is the class of thing already on this disk — the Wi-Fi
+passwords in `/etc/NetworkManager/system-connections`, the tailnet node key in
+`/var/lib/tailscale` — and it is why the key is this machine's alone.
 
 ### Swap and hibernation
 
@@ -501,6 +514,9 @@ sudo tailscale up --login-server https://wheezertbts.duckdns.org --auth-key <key
 is a committed scan of this machine. Regenerate it on a reinstall, and note that
 a scan taken with no USB storage attached drops `usb_storage`/`sd_mod` — which
 is why `default.nix` adds them back.
+
+**4. The Surfshark key**, hand-placed — see [Surfshark](#surfshark-the-three-workstations).
+Until it exists `NetworkManager-ensure-profiles` fails on every boot and switch.
 
 ## Second desktop (`wonudesktop`)
 
@@ -630,6 +646,11 @@ behaviour. Worth doing with them on day one:
 >   registers it; `systemctl status flathub-remote` if it is not).
 > - Steam → Settings → Compatibility → enable Proton for all titles.
 
+**6. The Surfshark key**, hand-placed — see [Surfshark](#surfshark-the-three-workstations).
+Until it exists `NetworkManager-ensure-profiles` fails on every boot, which
+costs nothing but a red unit: there is simply no Surfshark entry in the network
+applet. Its own key pair, not a copy of another machine's.
+
 ### Deliberately not wired up yet
 
 - **No Samba mounts and no secrets.** This host has no key in `keys.nix`, so it
@@ -666,3 +687,128 @@ is disappointed by them:
   browser, LibreOffice is installed, and OnlyOffice
   (`pkgs.onlyoffice-desktopeditors`, or the Flathub build) is the closest match
   for `.docx` fidelity if LibreOffice's rendering ever grates.
+
+## Surfshark (the three workstations)
+
+`modules/workstation/surfshark.nix` gives a workstation Surfshark as a
+NetworkManager WireGuard profile to Dallas. It is a **toggle**: off after every
+boot, on when someone clicks **Surfshark** in Plasma's network applet. From a
+terminal:
+
+```sh
+nmcli connection up Surfshark
+nmcli connection down Surfshark
+sudo wg show surfshark        # "latest handshake" is the proof the far end answered
+```
+
+No password prompt either way — every workstation user is in `networkmanager`.
+Imported per host, like `dev-tools.nix`.
+
+Not the official app: nixpkgs has no Surfshark package, and the server already
+runs Surfshark's manual WireGuard for the download stack. Not `nmcli connection
+import` of the dashboard's `.conf` either — that file routes IPv4 only, so on a
+dual-stack network IPv6 keeps leaving by the Wi-Fi with the tunnel up. Run in a
+VM against a v4-only WireGuard server, the stock config showed the web server
+the client's real v6 address; this profile does not.
+
+### What it does while it is on
+
+- **IPv4 leaves through the tunnel**, by policy routing: the tunnel's default
+  route sits in its own table, so the main table — and with it the LAN — is
+  untouched. Printers, the NAS and `192.168.1.239` stay reachable.
+- **IPv6 is refused, not tunnelled.** Surfshark carries none, so the profile
+  installs an `unreachable ::/0` for as long as it is up. A v6 connect fails in
+  about a millisecond and the application falls back to v4; nothing waits out
+  a timeout. The route goes away with the profile.
+- **The tailnet keeps working.** NetworkManager's two rules land at priority
+  30766–31766, behind Tailscale's 5210–5270, so tailnet peers and the server's
+  advertised routes still go to `tailscale0`, and `tailscaled`'s own packets
+  still leave by the physical NIC rather than riding inside Surfshark.
+- **DNS depends on the tailnet.** While it is up, `tailscaled` owns
+  `resolv.conf` exclusively, so names keep resolving through AdGuard at home —
+  ad-blocking and the internal vhosts survive, and the lookups leave from the
+  house, not from Dallas. With the tailnet down, `resolv.conf` holds Surfshark's
+  two resolvers and nothing else.
+- **It stays on** across suspend and across a change of network. It does not
+  stay on across a reboot, and there is no kill switch beyond that: this is a
+  switch somebody flips, not a guarantee.
+
+### First run — none of this is declarative
+
+The repo carries everything except the private key. **One key pair per
+machine**: two machines sharing a pair fight over one peer slot on Surfshark's
+server, and separate pairs are what let a lost laptop be cut off by deleting
+its key alone.
+
+**The laptop and `wonudesktop`** keep the key in a root-only file. Do this
+before the first rebuild that imports the module — the unit that writes the
+profile fails for as long as the file is missing:
+
+```sh
+sudo install -d -m 700 /etc/surfshark
+key=$(nix shell nixpkgs#wireguard-tools -c wg genkey)
+printf 'SURFSHARK_PRIVATE_KEY=%s\n' "$key" | sudo install -m 600 /dev/stdin /etc/surfshark/wireguard.env
+printf '%s\n' "$key" | nix shell nixpkgs#wireguard-tools -c wg pubkey   # register THIS one
+unset key
+```
+
+Register the printed public key at my.surfshark.com → VPN → Manual setup →
+WireGuard → *I have a key pair*, named after the host. (Letting the dashboard
+generate the pair works too: put the `PrivateKey` from the `.conf` it hands you
+in the file instead.) The `.conf` it offers for Dallas is also the cross-check
+for this module's defaults — its `Endpoint` and `PublicKey` should be
+`us-dal.prod.surfshark.com:51820` and the `publicKey` in `surfshark.nix`.
+
+Then rebuild, or if the module is already live:
+
+```sh
+sudo systemctl restart NetworkManager-ensure-profiles
+```
+
+**`frame-automata`** has an agenix identity, so its key is a secret like any
+other, and the host is deliberately **not wired yet**: `age.secrets.*.file`
+must exist at evaluation time, so the `.age` and the wiring are one commit,
+authored there. The rule is already in `hosts/frame-automata/secrets/secrets.nix`.
+
+```sh
+wg genkey     # prints the private key
+wg pubkey     # paste it, Enter, Ctrl-D — prints the public key to register
+cd hosts/frame-automata/secrets
+agenix -e surfshark-env.age      # one line: SURFSHARK_PRIVATE_KEY=<the private key>
+```
+
+(`wg` there needs `nix shell nixpkgs#wireguard-tools` until the module is in.)
+Then, in `hosts/frame-automata/default.nix`:
+
+```nix
+imports = [ … ../../modules/workstation/surfshark.nix ];
+
+age.secrets.surfshark-env.file = ./secrets/surfshark-env.age;
+surfshark.environmentFile = config.age.secrets.surfshark-env.path;
+```
+
+### Checking it
+
+```sh
+nmcli connection up Surfshark
+curl -4 https://ifconfig.co          # a Dallas address, not yours
+curl -6 -m 5 https://ifconfig.co     # fails at once: "Could not connect"
+tailscale ping wheezertbts           # the tailnet is still there
+```
+
+### Things that will bite
+
+- **Do not edit the profile in Plasma's connection editor.** It is rendered to
+  `/run` on every boot and switch; editing it makes NetworkManager save a copy
+  under `/etc` that shadows the declared one from then on. If that happens,
+  delete the copy in `/etc/NetworkManager/system-connections/` and restart
+  `NetworkManager-ensure-profiles`.
+- **Another city** is two options, `surfshark.endpoint` and
+  `surfshark.publicKey`. Each location has its own public key; both come from
+  the entry for that city in
+  `https://api.surfshark.com/v4/server/clusters/generic` (`connectionName`,
+  `pubKey`). The machine's own key pair does not change.
+- **A new key** is a new file (or a new `.age`) and a restart of
+  `NetworkManager-ensure-profiles`; delete the old key in the dashboard.
+- **A network that blocks UDP** blocks this. WireGuard has no TCP fallback, and
+  the official app's OpenVPN-over-TCP mode is the thing this does not have.

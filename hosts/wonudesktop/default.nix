@@ -18,10 +18,14 @@ in
     ../../modules/common
     ../../modules/common/nvidia.nix
     ../../modules/workstation
+    ../../modules/workstation/surfshark.nix
     ../../modules/homelab-client
   ];
   # No modules/workstation/dev-tools.nix: that is the editors/CLI/release-check layer
   # for the machines this repo is deployed from, and none of it is this user's.
+  #
+  # surfshark.nix reads its key from a hand-placed file here, like the laptop:
+  # this host has no agenix identity yet. First-boot step 6 in the README.
 
   networking.hostName = "wonudesktop";
   time.timeZone = site.timeZone;

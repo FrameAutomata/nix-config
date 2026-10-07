@@ -66,7 +66,10 @@ host NOT administered by the person using it, NOT yet installed).
 - hosts/frame-automobile/ — laptop; same module set as the desktop plus
   modules/common/intel-gpu.nix and a host-local power.nix. NO secrets dir and no
   key in keys.nix, deliberately: its disk is unencrypted, so a host key there
-  would be a decryption capability for anyone holding the laptop
+  would be a decryption capability for anyone holding the laptop. Its one
+  hand-placed credential is /etc/surfshark/wireguard.env — NOT an exception to
+  that rule (it decrypts nothing here; README says why), so do not "fix" it by
+  enrolling a host key
 - hosts/wonudesktop/ — girlfriend's desktop; modules/workstation (NOT its
   dev-tools.nix / dev-databases.nix) + modules/common/nvidia.nix + host-local
   gpu.nix (RTX 2070 Super: open kernel modules, VRAM-preserving suspend) +
@@ -105,6 +108,25 @@ host NOT administered by the person using it, NOT yet installed).
   keyd; power.nix: powertop/turbostat; wonudesktop: heroic/lutris/protonup-qt).
   Not in nixpkgs -> pkgs/<name>/ + a line in the flake's `ourPackages` overlay.
   That is the ONLY edit: packages, checks and CI all derive their lists from it.
+- modules/workstation/surfshark.nix — Surfshark on the workstations: a
+  NetworkManager WireGuard profile via ensureProfiles, autoconnect OFF, so the
+  profile is the toggle (Plasma's network applet / `nmcli connection up
+  Surfshark`). Opt-in by import, like the dev-*.nix layers. NOT the server's
+  wireguard-netns (that confines one service; this is a whole desktop) and NOT
+  the official app (not in nixpkgs). One key pair PER MACHINE, read from
+  `surfshark.environmentFile`: a hand-placed /etc/surfshark/wireguard.env on
+  the hosts with no agenix identity, an agenix secret on frame-automata. The
+  ensure-profiles unit FAILS while that file is missing. Three details are
+  load-bearing and were each found by RUNNING it in a VM: the `unreachable
+  ::/0` route (Surfshark's own AllowedIPs=0.0.0.0/0 leaks IPv6, and so does
+  `::/0` with v6 disabled on the profile; `::/0` plus an invented address
+  seals it but hangs every v6 connect for its full timeout),
+  addr-gen-mode=stable-privacy (a keyfile defaults to eui64, WireGuard has no
+  MAC, and NM then warns every 10 s while connected), and the key living IN the
+  profile rather than in KWallet (plasma-nm never prompts for a WireGuard key,
+  so an agent-owned key fails silently on first click). Do NOT add
+  checkReversePath for it — a strict-rpfilter host was run: 0 drops. Do NOT
+  edit the profile in Plasma's editor: NM saves an /etc copy that shadows it
 - site.nix + modules/notify.nix — shared by all four hosts; edit once, not four times
 - .github/workflows/ci.yml — three jobs (nixfmt, evaluate the three installed
   hosts, build both packages). Each drives the flake's `checks`, so the rules
@@ -118,6 +140,42 @@ host NOT administered by the person using it, NOT yet installed).
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
+Surfshark on the workstations: the module is IN and imported by
+frame-automobile and wonudesktop, NOT by frame-automata -- deliberately. Its
+key there is surfshark-env.age, which this laptop cannot create (no admin key),
+and age.secrets.*.file has to exist at eval time, so the import and the
+age.secrets wiring are one commit authored on frame-automata (the agenix rule
+is already in hosts/frame-automata/secrets/secrets.nix; the exact lines are in
+README "Surfshark"). The laptop has its key and RAN it on 2026-10-07, but only
+from a `nixos-rebuild test` build: not switched, and not on main, so a reboot
+or the weekly auto-upgrade drops it again. wonudesktop and frame-automata have
+no key.
+
+Verified 2026-10-07 in a five-VM NixOS test against a v4-only WireGuard server
+that NATs (a stand-in, NOT Surfshark), with the module exactly as committed: an
+unprivileged networkmanager-group user toggles it both ways; v4 leaves by the
+tunnel; a v6 connect is refused in ~25 ms and the server never sees the
+client's v6 address; resolv.conf swaps to the two Surfshark resolvers and back;
+Tailscale's rule set (copied from this laptop's live `ip rule`) still wins for
+tailnet and subnet routes, and its exclusive resolvconf entry
+(`resolvconf -m 0 -x -a tailscale`, from tailscaled's source) keeps DNS on the
+tailnet while both are up; the tunnel survives NM's sleep/wake and the underlay
+dropping; a reboot comes back OFF; nothing is left behind on disconnect.
+
+Verified on the laptop against Surfshark itself the same day: the dashboard's
+us-dal.conf matches the module's endpoint, public key, address and resolvers;
+with the profile up ifconfig.co saw a Dallas address on Datacamp (Surfshark's
+host), resolv.conf held only the two Surfshark resolvers, NM's rules sat
+behind tailscaled's live ones, NM logged no warnings, and disconnecting left
+no rule, route or interface behind.
+
+Still unverified: the Plasma applet click (nmcli is what ran); a LOGGED-IN
+tailscaled beside it (the laptop's was logged out that day -- its rules were
+live, its DNS push and tailnet routes were not, so those two rest on the VM
+emulation); and the IPv6 refusal on a real dual-stack network (that Wi-Fi had
+no v6 route, so only the VM has seen a leak prevented). PENDING MANUAL, in
+README "Surfshark": a key pair for each of the other two hosts.
+
 Living-room TV: the cage kiosk IS deployed (2026-09-14, running). The sway
 rewrite in this branch is built and closure-verified, NOT yet deployed.
 Structure and deploy rules are in the Map entry; the runbook, the
