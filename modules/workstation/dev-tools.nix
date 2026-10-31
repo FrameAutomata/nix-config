@@ -32,6 +32,7 @@
     # ~/.config/zed/settings.json points it at the flake and disables nil.
     nixd
     claude-code
+    firefox-devedition
     headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
 
