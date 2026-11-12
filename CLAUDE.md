@@ -57,10 +57,15 @@ host NOT administered by the person using it, NOT yet installed).
   The unit owns its own PAM service (tv-seat, allowNullPassword+startSession)
   since cage's went with cage. mpv-shim's conf.json/mpv.conf are installed by
   ExecStartPre from the store on every start — its cred.json is NOT declarable
-  (interactive login, README). Host-local because there is ONE TV, not because
-  it joins no registry: a service module would parameterise user/clients/sink/
-  output/modes/VT for zero second consumers and hand anyone enabling it a unit
-  that seizes tty1. NOT modules/workstation. tv-seat is restartIfChanged=false:
+  (interactive login, README). That install wipes anything the shim saved in
+  conf.json, so its client_uuid (= Jellyfin DeviceId) is PINNED in shimConf:
+  unpinned, every seat start became a new Jellyfin device. logind
+  KillOnlyUsers=tv is load-bearing too: the seat runs in a logind session
+  scope (not tv-seat's cgroup) that logind otherwise abandons, so idle
+  mpv-shims outlived every seat stop and kept taking casts. Host-local because
+  there is ONE TV, not because it joins no registry: a service module would
+  parameterise user/clients/sink/output/modes/VT for zero second consumers
+  and hand anyone enabling it a unit that seizes tty1. NOT modules/workstation. tv-seat is restartIfChanged=false:
   a switch never kills a viewing session; deploy OVER SSH, never from tty1
   (activation starts tv-seat, which conflicts getty@tty1; console -> tty2)
 - hosts/frame-automata/ — desktop; modules/workstation + modules/homelab-client;

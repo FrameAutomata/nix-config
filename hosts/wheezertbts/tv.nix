@@ -102,6 +102,12 @@ let
   shimConf = (pkgs.formats.json { }).generate "tv-jellyfin-mpv-shim.json" {
     enable_gui = false;
     player_name = "Living Room TV";
+    # The shim's Jellyfin DeviceId. Its default is a fresh uuid4 whenever the
+    # key is missing, and ExecStartPre replaces this file on every start — so
+    # unpinned, each seat start registered a new device and the cred.json
+    # login belonged to one the next start discarded. An identifier, not a
+    # credential: the token is in cred.json.
+    client_uuid = "450540f6-bfc2-4a24-ada5-206fbd4be35f";
     pre_media_cmd = toHdr;
     stop_cmd = toSdr;
     media_ended_cmd = toSdr;
@@ -177,6 +183,10 @@ in
       # XWayland on its own: its Linux display-mode helper opens an X
       # connection for XRandR. Harmless; the window itself stays Wayland.)
       QT_QPA_PLATFORM = "wayland";
+      # mpv-shim logs (libmpv's messages included) to stdout, which Python
+      # block-buffers when it is a pipe — without this none of it reaches the
+      # journal, and a cast that fails leaves no trace.
+      PYTHONUNBUFFERED = "1";
     };
 
     serviceConfig = {
@@ -184,7 +194,8 @@ in
       # truth. Runs as `tv` (User= applies to ExecStartPre too), and touches
       # only these two names — cred.json sits beside them and is the one piece
       # of this seat that cannot be declared: it is written by an interactive
-      # login (README).
+      # login (README). Anything the shim keeps in conf.json is lost here
+      # unless shimConf declares it, which is why client_uuid is pinned.
       ExecStartPre = [
         "${pkgs.coreutils}/bin/install -Dm0644 ${shimConf} /home/tv/.config/jellyfin-mpv-shim/conf.json"
         "${pkgs.coreutils}/bin/install -Dm0644 ${mpvConf} /home/tv/.config/jellyfin-mpv-shim/mpv.conf"
@@ -280,4 +291,12 @@ in
   # button must not shut down the server: logind ignores it, the TV's own
   # remote is the off switch, and the server is administered over ssh.
   services.logind.settings.Login.HandlePowerKey = "ignore";
+
+  # PAMName= makes logind move the seat's processes into a session scope, out
+  # of tv-seat's own cgroup, and logind abandons a scope at session end by
+  # default. So a seat stop killed sway but not mpv-shim, which holds no
+  # display connection while idle: every restart left one more stale "Living
+  # Room TV" taking casts it could not play. A non-empty KillOnlyUsers kills
+  # the listed users' scopes and leaves everyone else on the default.
+  services.logind.settings.Login.KillOnlyUsers = "tv";
 }
