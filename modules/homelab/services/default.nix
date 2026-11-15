@@ -24,5 +24,6 @@
     ./scrutiny.nix
     ./ntfy.nix
     ./welcome.nix
+    ./job-search.nix
   ];
 }

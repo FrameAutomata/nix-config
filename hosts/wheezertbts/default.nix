@@ -21,6 +21,8 @@ in
   age.secrets.vaultwarden-admin.file = ./secrets/vaultwarden-admin.age;
   age.secrets.restic-password.file = ./secrets/restic-password.age;
   age.secrets.b2-env.file = ./secrets/b2-env.age;
+  age.secrets.job-search-cory.file = ./secrets/job-search-cory.age;
+  age.secrets.job-search-eli.file = ./secrets/job-search-eli.age;
 
   homelab = {
     inherit (site)
@@ -76,6 +78,33 @@ in
         allowSignups = true;
       };
       navidrome.enable = true;
+      # Job-search triage boards, one per person, reachable over the tailnet so
+      # neither of them needs a GitHub account, a PAT or git. The pipeline
+      # itself stays in GitHub Actions; this hosts only the board. From the
+      # tailnet a peer can move a card, push it and refresh — nothing else, and
+      # UI_TRUST_LOOPBACK_PEER is deliberately NOT set, so the proxy being the
+      # TCP peer cannot unlock the rest.
+      jobSearch = {
+        enable = true;
+        instances.cory = {
+          checkout = "/var/lib/job-search/cory";
+          port = 8801;
+          environmentFile = config.age.secrets.job-search-cory.path;
+          dashboard = {
+            name = "Cory";
+            description = "Role triage";
+          };
+        };
+        instances.eli = {
+          checkout = "/var/lib/job-search/eli";
+          port = 8802;
+          environmentFile = config.age.secrets.job-search-eli.path;
+          dashboard = {
+            name = "Eli";
+            description = "Role triage";
+          };
+        };
+      };
       filebrowser.enable = true;
       homepage.enable = true;
       uptime-kuma.enable = true;
