@@ -13,6 +13,7 @@ in
     ../../modules/workstation
     ../../modules/workstation/dev-tools.nix
     ../../modules/workstation/dev-databases.nix
+    ../../modules/workstation/dev-android.nix
     ../../modules/homelab-client
   ];
 

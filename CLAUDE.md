@@ -108,8 +108,11 @@ host NOT administered by the person using it, NOT yet installed).
   workstations (the shared interactive app set — edit once, not thrice);
   the dev-*.nix layers = the two hosts Thomas administers from, opt-in per
   host: dev-tools.nix (editors, nixd, gh, claude-code, headroom, direnv,
-  nixos-release-check) and dev-databases.nix (postgres/clickhouse for
-  Traceway, neither wantedBy multi-user) — keep BOTH off wonudesktop;
+  nixos-release-check), dev-databases.nix (postgres/clickhouse for
+  Traceway, neither wantedBy multi-user) and dev-android.nix (android-studio,
+  android-tools, jdk21, nix-ld, ANDROID_HOME; the SDK itself is Studio-managed in
+  ~/Android/Sdk, NOT androidenv — read-only store SDK can't satisfy a project's
+  compileSdk) — keep ALL off wonudesktop;
   a host's own systemPackages is for that machine alone (laptop:
   keyd; power.nix: powertop/turbostat; wonudesktop: heroic/lutris/protonup-qt).
   Not in nixpkgs -> pkgs/<name>/ + a line in the flake's `ourPackages` overlay.
@@ -148,6 +151,16 @@ host NOT administered by the person using it, NOT yet installed).
 - Plan & rationale: claude-code-homelab-plan.md / service-plan.md (Claude project)
 
 ## Current phase note
+Android dev layer (modules/workstation/dev-android.nix, imported by
+frame-automata and frame-automobile): written and built, NOT switched on either
+host. Both host closures eval; the laptop's builds. Checked in
+that build: ANDROID_HOME renders in /etc/pam/environment and set-environment,
+android-studio 2025.3.4.7 / adb 1.0.41 / jdk 21.0.12 are on sw/bin, and Studio's
+bundled JBR is 21.0.10 (so jdk21 matches it). NOT verified: Studio's GUI and
+setup wizard, the emulator, a real device over adb (the systemd uaccess rule was
+read, not exercised -- no phone was attached), and a terminal ./gradlew -- aapt2
+9.5.1 needs only glibc libs (readelf), but it was never executed.
+
 Surfshark on the workstations: the module is IN and imported by
 frame-automobile and wonudesktop, NOT by frame-automata -- deliberately. Its
 key there is surfshark-env.age, which this laptop cannot create (no admin key),

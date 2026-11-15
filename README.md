@@ -39,10 +39,12 @@ sudo nixos-rebuild switch --rollback             # undo
   host — `audio.nix` is the PipeWire stack the workstations and the TV seat share)
 - `modules/workstation/` — interactive base: Plasma, gaming, nix gc (audio via
   `modules/common/audio.nix`).
-  Two opt-in `dev-*.nix` layers sit on top, imported only by the hosts this
+  Three opt-in `dev-*.nix` layers sit on top, imported only by the hosts this
   repo is deployed from: `dev-tools.nix` (editors, `nixd`, `gh`, `claude-code`,
-  direnv, the release check) and `dev-databases.nix` (PostgreSQL + ClickHouse
-  for Traceway). Anything true of *every* interactive machine stays in
+  direnv, the release check), `dev-databases.nix` (PostgreSQL + ClickHouse
+  for Traceway) and `dev-android.nix` (Android Studio, `adb`, a JDK — see
+  [Android development](#android-development-the-two-admin-workstations)).
+  Anything true of *every* interactive machine stays in
   `default.nix`. `surfshark.nix` is opt-in the same way: Surfshark as a
   NetworkManager WireGuard profile, toggled from the network applet
 - `modules/homelab-client/` — the *using* side: tailnet, ntfy alerts, mounts
@@ -532,12 +534,12 @@ move together and a bad revision is never true on one and false on another.
 What differs from `frame-automata`, which is otherwise the same class of
 machine:
 
-- **`modules/workstation`, but neither `dev-*.nix` layer.** The Plasma / audio
+- **`modules/workstation`, but none of the `dev-*.nix` layers.** The Plasma / audio
   / Steam / browser / LibreOffice base is shared by every interactive machine;
   the editors, terminals, `nixd`, `gh`, `claude-code`, `headroom`, direnv and
-  the NixOS-release check live in `dev-tools.nix`, and the Traceway databases
-  in `dev-databases.nix`. Both are imported per host, by the two machines this
-  repo is deployed from. The split is admin-vs-not, not desktop-vs-laptop, so
+  the NixOS-release check live in `dev-tools.nix`, the Traceway databases
+  in `dev-databases.nix`, and Android Studio / `adb` in `dev-android.nix`. All
+  are imported per host, by the two machines this repo is deployed from. The split is admin-vs-not, not desktop-vs-laptop, so
   there is still exactly one place to edit anything true of all three
   workstations.
 - **The LTS kernel** (`pkgs.linuxPackages`, 6.18) rather than
@@ -682,6 +684,39 @@ is disappointed by them:
   browser, LibreOffice is installed, and OnlyOffice
   (`pkgs.onlyoffice-desktopeditors`, or the Flathub build) is the closest match
   for `.docx` fidelity if LibreOffice's rendering ever grates.
+
+## Android development (the two admin workstations)
+
+`modules/workstation/dev-android.nix` — imported by `frame-automata` and
+`frame-automobile`, not `wonudesktop` — installs Android Studio, `adb` /
+`fastboot` (`android-tools`) and `jdk21`. Kotlin support, the debugger, the
+profiler and the emulator front end are all Studio's own; nothing else is
+needed for Kotlin.
+
+The **SDK is not declared**: Studio downloads it into `~/Android/Sdk`, and
+`ANDROID_HOME` already points there. That is deliberate — an `androidenv` SDK
+lives in the read-only store, so Gradle could never fetch a build-tools or
+platform version a project asks for, and every `compileSdk` bump would become a
+commit here. The module's header says the same.
+
+### First run — none of this is declarative
+
+1. **Start Android Studio** from the menu (or `android-studio`) and take the
+   "Standard" setup. It installs the SDK, platform-tools and the emulator into
+   `~/Android/Sdk` and asks you to accept the licences.
+2. **A phone for debugging**: enable Developer options → USB debugging, plug it
+   in, and accept the RSA-fingerprint prompt on the phone. `adb devices` must
+   say `device`, not `unauthorized`. There is no group to join — systemd's
+   uaccess rule hands the device to whoever is logged in at the seat, which
+   means a graphical session, not an ssh one.
+3. **The emulator** wants `/dev/kvm`, which is `root:kvm` mode 0666 on NixOS, so
+   nothing to do. Memory is the real limit: Studio, a Gradle daemon and an
+   emulator together are several GiB, and the laptop has 15 GiB and was already
+   swapping a desktop session's worth. Prefer a physical device there.
+4. **From a terminal**, `./gradlew assembleDebug` / `installDebug` runs on
+   `jdk21` with `ANDROID_HOME` set. It needs a fresh login first, since
+   `ANDROID_HOME` is set at session start. The `aapt2` Gradle downloads is a
+   generic-Linux binary, which is why the module enables `programs.nix-ld`.
 
 ## Surfshark (the three workstations)
 
