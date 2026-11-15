@@ -39,10 +39,12 @@ sudo nixos-rebuild switch --rollback             # undo
   host — `audio.nix` is the PipeWire stack the workstations and the TV seat share)
 - `modules/workstation/` — interactive base: Plasma, gaming, nix gc (audio via
   `modules/common/audio.nix`).
-  Two opt-in `dev-*.nix` layers sit on top, imported only by the hosts this
+  Three opt-in `dev-*.nix` layers sit on top, imported only by the hosts this
   repo is deployed from: `dev-tools.nix` (editors, `nixd`, `gh`, `claude-code`,
-  direnv, the release check) and `dev-databases.nix` (PostgreSQL + ClickHouse
-  for Traceway). Anything true of *every* interactive machine stays in
+  `opencode`, direnv, the release check), `dev-databases.nix` (PostgreSQL + ClickHouse
+  for Traceway) and `dev-android.nix` (Android Studio, `adb`, a JDK — see
+  [Android development](#android-development-the-two-admin-workstations)).
+  Anything true of *every* interactive machine stays in
   `default.nix`. `surfshark.nix` is opt-in the same way: Surfshark as a
   NetworkManager WireGuard profile, toggled from the network applet
 - `modules/homelab-client/` — the *using* side: tailnet, ntfy alerts, mounts
@@ -532,12 +534,12 @@ move together and a bad revision is never true on one and false on another.
 What differs from `frame-automata`, which is otherwise the same class of
 machine:
 
-- **`modules/workstation`, but neither `dev-*.nix` layer.** The Plasma / audio
+- **`modules/workstation`, but none of the `dev-*.nix` layers.** The Plasma / audio
   / Steam / browser / LibreOffice base is shared by every interactive machine;
-  the editors, terminals, `nixd`, `gh`, `claude-code`, `headroom`, direnv and
-  the NixOS-release check live in `dev-tools.nix`, and the Traceway databases
-  in `dev-databases.nix`. Both are imported per host, by the two machines this
-  repo is deployed from. The split is admin-vs-not, not desktop-vs-laptop, so
+  the editors, terminals, `nixd`, `gh`, `claude-code`, `opencode`, `headroom`, direnv and
+  the NixOS-release check live in `dev-tools.nix`, the Traceway databases
+  in `dev-databases.nix`, and Android Studio / `adb` in `dev-android.nix`. All
+  are imported per host, by the two machines this repo is deployed from. The split is admin-vs-not, not desktop-vs-laptop, so
   there is still exactly one place to edit anything true of all three
   workstations.
 - **The LTS kernel** (`pkgs.linuxPackages`, 6.18) rather than
@@ -682,6 +684,100 @@ is disappointed by them:
   browser, LibreOffice is installed, and OnlyOffice
   (`pkgs.onlyoffice-desktopeditors`, or the Flathub build) is the closest match
   for `.docx` fidelity if LibreOffice's rendering ever grates.
+
+## Android development (the two admin workstations)
+
+`modules/workstation/dev-android.nix` — imported by `frame-automata` and
+`frame-automobile`, not `wonudesktop` — installs Android Studio, `adb` /
+`fastboot` (`android-tools`) and `jdk21`. Kotlin support, the debugger, the
+profiler and the emulator front end are all Studio's own; nothing else is
+needed for Kotlin.
+
+The **SDK is not declared**: Studio downloads it into `~/Android/Sdk`, and
+`ANDROID_HOME` already points there. That is deliberate — an `androidenv` SDK
+lives in the read-only store, so Gradle could never fetch a build-tools or
+platform version a project asks for, and every `compileSdk` bump would become a
+commit here. The module's header says the same.
+
+### First run — none of this is declarative
+
+1. **Start Android Studio** from the menu (or `android-studio`) and take the
+   "Standard" setup. It installs the SDK, platform-tools and the emulator into
+   `~/Android/Sdk` and asks you to accept the licences.
+2. **A phone for debugging**: enable Developer options → USB debugging, plug it
+   in, and accept the RSA-fingerprint prompt on the phone. `adb devices` must
+   say `device`, not `unauthorized`. There is no group to join — systemd's
+   uaccess rule hands the device to whoever is logged in at the seat, which
+   means a graphical session, not an ssh one.
+3. **The emulator** wants `/dev/kvm`, which is `root:kvm` mode 0666 on NixOS, so
+   nothing to do. Memory is the real limit: Studio, a Gradle daemon and an
+   emulator together are several GiB, and the laptop has 15 GiB and was already
+   swapping a desktop session's worth. Prefer a physical device there.
+4. **From a terminal**, `./gradlew assembleDebug` / `installDebug` runs on
+   `jdk21` with `ANDROID_HOME` set. It needs a fresh login first, since
+   `ANDROID_HOME` is set at session start. The `aapt2` Gradle downloads is a
+   generic-Linux binary, which is why the module enables `programs.nix-ld`.
+
+### A rootable emulator
+
+Whether an AVD can be rooted is fixed by the system image it was created from;
+nothing in this repo changes that, and an existing AVD cannot be converted.
+Google's docs say images with the Play Store are release-signed so you cannot
+get root on them, and that AOSP images support `adb root` / `adb unroot`. They
+say nothing either way about Google APIs images. The Play image Studio
+installed on the laptop (`google_apis_playstore_ps16k`) has
+`ro.build.type=user` in its `build.prop`, which is what makes `adb root`
+refuse.
+
+1. **SDK Manager → SDK Platforms → Show Package Details**, and install a
+   non-Play x86_64 image: *Google APIs* (`system-images;android-37.0;google_apis;x86_64`)
+   keeps Google Play services; *AOSP* (`...;default;x86_64`) is the one the docs
+   promise root on. Before booting anything, read its type:
+   `grep ro.build.type ~/Android/Sdk/system-images/android-37.0/google_apis/x86_64/build.prop`
+   — `userdebug` is rootable, `user` is not.
+2. **Device Manager → Create Virtual Device**, and pick that image, not one
+   whose Services column says Google Play.
+3. `adb root` restarts adbd as root; `adb shell id` should show `uid=0`, and
+   `adb unroot` goes back.
+4. **A writable `/system`** is a separate step: start the AVD with
+   `-writable-system` and run `adb remount` (Google's wording). The docs do not
+   say whether to `adb root` first or whether verity needs disabling; if the
+   remount refuses, those are the two things to try. Start it from Studio's
+   integrated terminal, which runs inside its FHS env —
+   `~/Android/Sdk/emulator/emulator -avd <name> -writable-system` — because the
+   emulator is another generic-Linux binary that a plain shell here may not
+   run. None of this was run on these hosts.
+
+### Claude Code and OpenCode beside Studio
+
+Both are ordinary terminal tools from `dev-tools.nix`, and Studio's integrated
+terminal runs inside the FHS env, where `claude` and `opencode` resolve from
+`/run/current-system/sw/bin` (checked: `android-studio-fhs-env -c 'command -v
+claude'`). Anything that works in a terminal works there with no further setup.
+
+- **Claude Code** has an official JetBrains plugin, *Claude Code [Beta]*, and
+  Anthropic's docs list Android Studio among the supported IDEs. Settings →
+  Plugins → Marketplace, install, restart. Then `claude` run in Studio's
+  terminal connects by itself (diffs open in the IDE, the selection is shared);
+  from any other terminal, `/ide` connects. If the plugin says "Cannot launch
+  Claude Code", set Settings → Tools → Claude Code [Beta] → Claude command to
+  `/run/current-system/sw/bin/claude`. Not verified: that the plugin's build
+  range covers Studio 2025.3.
+- **OpenCode** documents VS Code, Cursor and "any IDE that supports a terminal",
+  and names no JetBrains plugin; run `opencode` in Studio's terminal. Its ACP
+  route into JetBrains goes through the *AI Assistant* plugin's `acp.json`
+  (`agent_servers` → `OpenCode` → `command: /run/current-system/sw/bin/opencode`,
+  `args: ["acp"]`; JetBrains wants an absolute path). Studio 2025.3 does not
+  bundle that plugin, and whether it installs into Android Studio is
+  unverified. Community OpenCode plugins exist on the Marketplace; their
+  vendors and compatibility were not checked.
+- **Native agent support** — Android Studio's "Bring Your Own Agent" over ACP,
+  with Claude and OpenCode-style agents picked from Settings → Tools → AI →
+  Agents — arrived in **Rabbit 2** (2026.2). `nixos-26.05` still has Panda 4
+  (2025.3.4.7) as stable and Quail (2026.1) as beta/canary; Rabbit 2 is only on
+  nixpkgs master. It reaches this repo when the release branch bumps it and
+  `nix flake update nixpkgs-workstation` picks that up; check with
+  `nix eval --raw .#nixosConfigurations.frame-automobile.pkgs.android-studio.version`.
 
 ## Surfshark (the three workstations)
 
