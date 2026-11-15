@@ -107,7 +107,7 @@ host NOT administered by the person using it, NOT yet installed).
 - Packages: modules/common = all four hosts; modules/workstation = all three
   workstations (the shared interactive app set — edit once, not thrice);
   the dev-*.nix layers = the two hosts Thomas administers from, opt-in per
-  host: dev-tools.nix (editors, nixd, gh, claude-code, headroom, direnv,
+  host: dev-tools.nix (editors, nixd, gh, claude-code, opencode, headroom, direnv,
   nixos-release-check), dev-databases.nix (postgres/clickhouse for
   Traceway, neither wantedBy multi-user) and dev-android.nix (android-studio,
   android-tools, jdk21, nix-ld, ANDROID_HOME; the SDK itself is Studio-managed in

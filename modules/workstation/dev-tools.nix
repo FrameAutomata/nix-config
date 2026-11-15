@@ -33,6 +33,10 @@
     # ~/.config/zed/settings.json points it at the flake and disables nil.
     nixd
     claude-code
+    # nixos-26.05 ships 1.x. Upstream's docs mix V1 and V2 config shapes (its
+    # MCP page is V2) and nixpkgs master is on 2.x, so check which major a
+    # config snippet or plugin was written for before copying it.
+    opencode
     firefox-devedition
     headroom # pkgs/headroom — context-compression proxy, `headroom wrap claude`
   ];
