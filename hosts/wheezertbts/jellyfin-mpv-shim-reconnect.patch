@@ -1,0 +1,60 @@
+--- a/jellyfin_mpv_shim/clients.py
++++ b/jellyfin_mpv_shim/clients.py
+@@ -48,7 +48,10 @@
+     def run(self):
+         while not self.halt:
+             if not self.trigger.wait(settings.health_check_interval):
+-                self.callback()
++                try:
++                    self.callback()
++                except Exception:
++                    log.exception("Client health check failed.")
+ 
+ 
+ class ClientManager(object):
+@@ -185,9 +188,13 @@
+         return False
+ 
+     def validate_client(self, client: "JellyfinClient", dry_run=False):
+-        client_list = client.jellyfin.sessions(
+-            params={"ControllableByUserId": "{UserId}"}
+-        )
++        try:
++            client_list = client.jellyfin.sessions(
++                params={"ControllableByUserId": "{UserId}"}
++            )
++        except Exception:
++            log.warning("Health check session query failed; treating as disconnected.")
++            client_list = []
+ 
+         if client_list is None:
+             log.warning(
+@@ -203,11 +210,12 @@
+                 log.warning(
+                     "Client is not actually connected. (It does not show in the client list.)"
+                 )
+-                # WebSocketDisconnect doesn't always happen here.
+                 client.callback = lambda *_: None
+                 client.callback_ws = lambda *_: None
++                for key, registered in list(self.clients.items()):
++                    if registered is client:
++                        del self.clients[key]
+                 client.stop()
+-                client.callback("WebSocketDisconnect", None)
+             return False
+ 
+         return True
+@@ -313,8 +321,12 @@
+ 
+     def check_all_clients(self):
+         log.info("Performing client health check...")
+-        for client in self.clients.values():
++        for client in list(self.clients.values()):
+             self.validate_client(client)
++        for server in list(self.credentials):
++            if server["uuid"] not in self.clients and not self.is_stopping:
++                log.info("Health check: retrying disconnected server %s", server.get("address"))
++                self.connect_client(server, do_retries=False)
+ 
+     def stop(self):
+         if self.health_check:

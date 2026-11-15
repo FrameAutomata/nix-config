@@ -59,7 +59,11 @@ host NOT administered by the person using it, NOT yet installed).
   ExecStartPre from the store on every start — its cred.json is NOT declarable
   (interactive login, README). That install wipes anything the shim saved in
   conf.json, so its client_uuid (= Jellyfin DeviceId) is PINNED in shimConf:
-  unpinned, every seat start became a new Jellyfin device. logind
+  unpinned, every seat start became a new Jellyfin device. mpv-shim is
+  PATCHED (jellyfin-mpv-shim-reconnect.patch, a backport of upstream 3.x):
+  2.9.0 never reconnects after a Jellyfin restart, which the 04:15 restic stop
+  window causes every night, so unpatched the TV went deaf to casts daily.
+  Drop the patch once nixpkgs ships 3.x. logind
   KillOnlyUsers=tv is load-bearing too: the seat runs in a logind session
   scope (not tv-seat's cgroup) that logind otherwise abandons, so idle
   mpv-shims outlived every seat stop and kept taking casts. Host-local because

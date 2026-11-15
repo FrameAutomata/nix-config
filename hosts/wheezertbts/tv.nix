@@ -59,6 +59,21 @@ let
   uiMode = "3840x2160@60Hz";
   filmMode = "3840x2160@24Hz";
 
+  # 2.9.0 never comes back from a Jellyfin restart, and the nightly restic
+  # stop window restarts Jellyfin at 04:15. Its health check sees the TV
+  # missing from the session list and tears the client down, but first swaps
+  # the client's callbacks for no-ops and then fires the reconnect through
+  # one of them, so the reconnect never runs. The next check that hits the
+  # server mid-restart raises ConnectionRefused, which nothing catches, and
+  # that kills the health-check thread. After that the shim idles with no
+  # websocket and casts to it go nowhere. The patch backports upstream 3.x's
+  # fix: catch the exception, drop the dead client, and reconnect from the
+  # saved credentials on the next tick (every 300 s). Delete it once nixpkgs
+  # ships 3.x.
+  mpvShim = pkgs.jellyfin-mpv-shim.overrideAttrs (old: {
+    patches = (old.patches or [ ]) ++ [ ./jellyfin-mpv-shim-reconnect.patch ];
+  });
+
   swaymsg = "${pkgs.sway}/bin/swaymsg";
   # `sleep` lets the TV finish re-syncing to the new mode before mpv maps its
   # window — a mode switch is not instant on the panel, and mpv reads the
@@ -78,7 +93,7 @@ let
     for_window [app_id=".*"] fullscreen enable
     for_window [class=".*"] fullscreen enable
 
-    exec ${lib.getExe pkgs.jellyfin-mpv-shim}
+    exec ${lib.getExe mpvShim}
     exec ${lib.getExe pkgs.jellyfin-desktop} --tv --fullscreen
   '';
 
