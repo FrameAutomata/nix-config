@@ -153,6 +153,12 @@ host NOT administered by the person using it, NOT yet installed).
   live in flake.nix and not in YAML. It does NOT build host closures: three
   NixOS closures do not fit a GitHub runner's disk, so that stays a local gate
   on frame-automata before a switch
+- .github/workflows/update-claude-desktop.yml — Sundays: `nix flake update
+  claude-desktop`, build the host's pkgs.claude-desktop + evaluate every host,
+  push the lock to main as github-actions[bot] (Monday's autoUpgrade then
+  deploys it). Pushes straight to main, so it gates itself (a GITHUB_TOKEN push
+  never triggers ci.yml) and its actions are SHA-pinned. Expect those bot lock
+  commits on main; pull before bumping other inputs locally
 - The flake exports overlays.default, packages, checks, formatter and
   devShells alongside nixosConfigurations. pkgs/* rides `ourPackages`, one
   named overlay consumed both by `shared` (the hosts) and by overlays.default
