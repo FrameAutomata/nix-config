@@ -318,6 +318,13 @@ nix flake update nixpkgs               # server only
 It auto-upgrades weekly from `github:FrameAutomata/nix-config#frame-automata`,
 so deploying is pushing and the running system always matches a commit.
 
+Claude Desktop new releases arrive by that same path: the `update claude-desktop`
+workflow bumps that one input every Sunday, builds the package and evaluates
+every host, then pushes the lock to `main`, ahead of Monday's upgrade on both
+workstations. For a release mid-week, run it from the Actions tab (or
+`gh workflow run update-claude-desktop.yml`), then `git pull` and rebuild. The
+app's own updater cannot work here; the Nix store is read-only.
+
 ### First boot — none of this is declarative
 
 **1. Hardware scan.** `hosts/frame-automata/hardware-configuration.nix` is a

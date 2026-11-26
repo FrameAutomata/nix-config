@@ -1,0 +1,87 @@
+# Keeps the claude-desktop input current. The workstations' system.autoUpgrade
+# builds from main's flake.lock and never updates it, so a lock bump that is
+# not on main never reaches them — this lands one on main before the Monday
+# 02:00 America/Chicago upgrade picks it up.
+#
+# The bump is done here, not with --override-input on the hosts, so the
+# running system still matches a commit (README "Desktop"): host-side, every
+# manual `nixos-rebuild` from a checkout would downgrade back to the lock.
+#
+# This pushes to main, which deploys to both workstations, so it gates itself:
+# a GITHUB_TOKEN push triggers no other workflow, so ci.yml never sees it.
+# For the same reason the action refs are pinned to SHAs here, unlike ci.yml —
+# a floating ref holding contents: write could put anything on main.
+
+name: update claude-desktop
+
+on:
+  schedule:
+    # Sunday 18:17 UTC — Sunday midday in Chicago, well clear of Monday's
+    # upgrade window even when GitHub runs schedules late.
+    - cron: "17 18 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
+
+      # The host's pkgs, not the flake's packages output: that is the
+      # derivation the workstations install (nixpkgs-workstation, their
+      # nixpkgs.config), and it is not in `packages` at all.
+      - name: Current version
+        id: old
+        run: |
+          echo "version=$(nix eval --raw .#nixosConfigurations.frame-automata.pkgs.claude-desktop.version)" >> "$GITHUB_OUTPUT"
+
+      - name: Update the input
+        id: update
+        run: |
+          nix flake update claude-desktop
+          if git diff --quiet flake.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Building the package catches a bad upstream hash, which evaluation
+      # alone would not, and which would otherwise fail Monday's upgrade on
+      # both workstations. Evaluating every host catches the input's NixOS
+      # module renaming an option the hosts set (cowork.kvmUsers).
+      - name: Gate
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          nix build --no-link --print-build-logs .#nixosConfigurations.frame-automata.pkgs.claude-desktop
+          hosts=$(nix eval --raw .#checks.x86_64-linux --apply \
+            'cs: with builtins; concatStringsSep " " (filter (n: match "host-.*" n != null) (attrNames cs))')
+          echo "evaluating: $hosts"
+          # shellcheck disable=SC2046
+          nix build --dry-run --no-link \
+            $(for h in $hosts; do printf '.#checks.x86_64-linux.%s ' "$h"; done)
+
+      # No rebase on a rejected push: if main moved underneath, this run's
+      # gate was against a tree that no longer exists. GitHub emails a failed
+      # scheduled run to whoever last edited the cron line; re-run it by hand
+      # or let next week's pick it up.
+      - name: Commit and push
+        if: steps.update.outputs.changed == 'true'
+        env:
+          OLD: ${{ steps.old.outputs.version }}
+        run: |
+          new=$(nix eval --raw .#nixosConfigurations.frame-automata.pkgs.claude-desktop.version)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "flake.lock: bump claude-desktop $OLD -> $new" -- flake.lock
+          git push origin HEAD:main
