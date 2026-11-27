@@ -182,10 +182,9 @@ key there is surfshark-env.age, which this laptop cannot create (no admin key),
 and age.secrets.*.file has to exist at eval time, so the import and the
 age.secrets wiring are one commit authored on frame-automata (the agenix rule
 is already in hosts/frame-automata/secrets/secrets.nix; the exact lines are in
-README "Surfshark"). The laptop has its key and is RUNNING the module, switched
-on 2026-10-07 from a working tree that also held uncommitted local changes --
-so no generation built from exactly this commit has run. It is not on main
-yet, so the weekly auto-upgrade drops it again until this merges.
+README "Surfshark"). The laptop has its key and is RUNNING the module, which
+merged in #25. Its auto-upgrade switches to github main, so a profile change
+that lives only in a working tree lasts just until that next runs.
 
 Verified 2026-10-07 in a five-VM NixOS test against a v4-only WireGuard server
 that NATs (a stand-in, NOT Surfshark), with the module exactly as committed: an
@@ -208,6 +207,15 @@ with the profile up ifconfig.co saw a Dallas address on Datacamp (Surfshark's
 host), resolv.conf held only the two Surfshark resolvers, NM's rules sat
 behind tailscaled's live ones, NM logged no warnings, and disconnecting left
 no rule, route or interface behind.
+
+City moved Dallas -> Kansas City on 2026-11-19: Discord's desktop app got a
+403 from some Dallas servers (the hostname is a per-connect pool; 10 of 25
+sampled blocked, 0 of 14 Kansas City). Only the two constants changed; the
+Kansas City pubKey is from the clusters API, NOT yet cross-checked against the
+dashboard's us-kan.conf. The Dallas verification above still covers
+everything else in the profile. The laptop runs it: generation 40, switched
+2026-11-19, is the closure this commit evaluates to, and on 2026-11-27 nmcli
+showed the tunnel up with endpoint us-kan.prod.surfshark.com.
 
 Still unverified: the Plasma applet click (nmcli is what ran); a LOGGED-IN
 tailscaled beside it (the laptop's was logged out that day -- its rules were

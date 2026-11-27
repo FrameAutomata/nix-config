@@ -27,12 +27,14 @@
 }:
 
 let
-  # Dallas, like the server's tunnel. A location is this PAIR: the `pubKey`
-  # beside the matching `connectionName` in
-  # https://api.surfshark.com/v4/server/clusters/generic, and the `PublicKey`
-  # in the .conf the dashboard hands out for it.
-  endpoint = "us-dal.prod.surfshark.com:51820";
-  publicKey = "0iwHQpV+rsOg38ogv4g4XMLJa51YqWY/yKWR9UEUMDk=";
+  # Kansas City, not Dallas like the server's tunnel: the hostname is a pool
+  # that hands out a different server per connect, and Discord's desktop app
+  # gets a 403 from 10 of the 25 Dallas servers sampled on 2026-11-19 against
+  # 0 of 14 here. A location is this PAIR: the `pubKey` beside the matching
+  # `connectionName` in https://api.surfshark.com/v4/server/clusters/generic,
+  # and the `PublicKey` in the .conf the dashboard hands out for it.
+  endpoint = "us-kan.prod.surfshark.com:51820";
+  publicKey = "SWN/jzfK69ucEUqQyPejKb9wWxwUoOgG37YlgeCmvjg=";
 in
 {
   options.surfshark.environmentFile = lib.mkOption {
