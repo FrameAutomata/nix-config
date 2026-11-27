@@ -789,9 +789,9 @@ claude'`). Anything that works in a terminal works there with no further setup.
 ## Surfshark (the three workstations)
 
 `modules/workstation/surfshark.nix` gives a workstation Surfshark as a
-NetworkManager WireGuard profile to Dallas. It is a **toggle**: off after every
-boot, on when someone clicks **Surfshark** in Plasma's network applet. From a
-terminal:
+NetworkManager WireGuard profile to Kansas City. It is a **toggle**: off after
+every boot, on when someone clicks **Surfshark** in Plasma's network applet.
+From a terminal:
 
 ```sh
 nmcli connection up Surfshark
@@ -826,8 +826,8 @@ the client's real v6 address; this profile does not.
 - **DNS depends on the tailnet.** While it is up, `tailscaled` owns
   `resolv.conf` exclusively, so names keep resolving through AdGuard at home —
   ad-blocking and the internal vhosts survive, and the lookups leave from the
-  house, not from Dallas. With the tailnet down, `resolv.conf` holds Surfshark's
-  two resolvers and nothing else.
+  house, not from Kansas City. With the tailnet down, `resolv.conf` holds
+  Surfshark's two resolvers and nothing else.
 - **It stays on** across suspend and across a change of network. It does not
   stay on across a reboot, and there is no kill switch beyond that: this is a
   switch somebody flips, not a guarantee.
@@ -861,9 +861,9 @@ unset key
 Register the printed public key at my.surfshark.com → VPN → Manual setup →
 WireGuard → *I have a key pair*, named after the host. (Letting the dashboard
 generate the pair works too: put the `PrivateKey` from the `.conf` it hands you
-in the file instead.) The `.conf` it offers for Dallas is also the cross-check
-for the two constants at the top of `surfshark.nix`: its `Endpoint` and
-`PublicKey` should match them.
+in the file instead.) The `.conf` it offers for Kansas City is also the
+cross-check for the two constants at the top of `surfshark.nix`: its `Endpoint`
+and `PublicKey` should match them.
 
 Then rebuild, or if the module is already live:
 
@@ -897,7 +897,7 @@ surfshark.environmentFile = config.age.secrets.surfshark-env.path;
 
 ```sh
 nmcli connection up Surfshark
-curl -4 https://ifconfig.co          # a Dallas address, not yours
+curl -4 https://ifconfig.co          # a Kansas City address, not yours
 curl -6 -m 5 https://ifconfig.co     # fails at once: "Could not connect"
 tailscale ping wheezertbts           # the tailnet is still there
 ```
@@ -913,6 +913,14 @@ tailscale ping wheezertbts           # the tailnet is still there
   together: each location has its own public key, and both come from the entry
   for that city in `https://api.surfshark.com/v4/server/clusters/generic`
   (`connectionName`, `pubKey`). The machine's own key pair does not change.
+- **Discord's desktop app refuses some Surfshark servers**: a splash screen,
+  then "Network Error", and `journalctl --user | grep Discord` shows
+  `err-403-status-403`. Each city hostname is a pool that hands out a
+  different server per connect, and the block is per server, so it comes and
+  goes between connects. That is why this is Kansas City and not Dallas: on
+  2026-11-19, 10 of 25 Dallas servers were blocked and 0 of 14 here. If it
+  comes back, `nmcli connection down Surfshark && nmcli connection up Surfshark`
+  rolls another server; if it sticks, move city.
 - **A new key** is a new file and a restart of `NetworkManager-ensure-profiles`.
   On `frame-automata` it is a new `.age`, then a `nixos-rebuild switch` BEFORE
   that restart: agenix decrypts only at activation, so a restart alone renders
